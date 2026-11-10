@@ -1,344 +1,941 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Topo Noord-Nederland</title>
-  
-  <!-- Inladen van React, Babel en Tailwind CSS via het internet -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TOPO CHOPPER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#07040f;overflow:hidden;overscroll-behavior:none}
+body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,Menlo,Consolas,monospace;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+#stage{position:relative;--u:4px;overflow:hidden;background:#000}
+#scr{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.layer{position:absolute;inset:0;pointer-events:none}
+[hidden]{display:none!important}
+.sh{text-shadow:calc(var(--u)*.6) calc(var(--u)*.6) 0 #000}
+/* HUD */
+#mission{position:absolute;left:calc(var(--u)*5);top:calc(var(--u)*5);background:rgba(16,8,40,.78);border:calc(var(--u)*.7) solid #ffd23e;padding:calc(var(--u)*3) calc(var(--u)*4);max-width:62%}
+#mission small{display:block;font-size:calc(var(--u)*4.2);color:#8fe9ff;line-height:1.5}
+#mission b{display:block;font-size:calc(var(--u)*8.5);color:#ffd23e;line-height:1.25;margin-top:calc(var(--u)*1)}
+#stats{position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*5);text-align:right;font-size:calc(var(--u)*4.4);line-height:1.7}
+#stats b{font-size:calc(var(--u)*7);color:#ffd23e}
+#stats .t b{color:#fff}
+#stats .t.low b{color:#ff4d6d;animation:blink .5s steps(2) infinite}
+#stats .r b{color:#ff7ad9}
+#gauge{position:absolute;left:calc(var(--u)*5);bottom:calc(var(--u)*5);font-size:calc(var(--u)*4);line-height:1.7;color:#8fe9ff}
+#gauge b{color:#fff;font-size:calc(var(--u)*6)}
+#banner{position:absolute;left:0;right:0;top:21%;text-align:center;font-size:calc(var(--u)*11);line-height:1.3}
+#banner small{display:block;font-size:calc(var(--u)*5);margin-top:calc(var(--u)*2);color:#fff}
+#banner.good{color:#7dff8a}#banner.bad{color:#ff5d6d;font-size:calc(var(--u)*8)}#banner.info{color:#ffd23e}
+#banner.pop{animation:pop .25s steps(4)}
+@keyframes pop{from{transform:scale(1.6)}to{transform:scale(1)}}
+@keyframes blink{50%{opacity:0}}
+#mapwrap{position:absolute;right:calc(var(--u)*6);bottom:calc(var(--u)*6);border:calc(var(--u)*1.2) solid #24153f;background:#7ea9c4;pointer-events:auto;cursor:pointer;line-height:0;box-shadow:0 0 0 calc(var(--u)*.7) #ffd23e,0 0 0 calc(var(--u)*1.5) #ff2e88,0 0 0 calc(var(--u)*2.2) #24153f,calc(var(--u)*3.4) calc(var(--u)*3.4) 0 calc(var(--u)*1) rgba(0,0,0,.45)}
+#mapwrap.big{right:auto;bottom:auto;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 calc(var(--u)*.7) #ffd23e,0 0 0 calc(var(--u)*1.5) #ff2e88,0 0 0 calc(var(--u)*2.2) #24153f,0 0 0 100vmax rgba(8,4,24,.6)}
+#mapwrap canvas{display:block}
+#mapwrap.radar,#mapwrap.radar canvas{border-radius:50%}#mapwrap.radar{background:#04140e}
+#maphint{position:absolute;left:0;right:0;top:calc(var(--u)*-8.5);text-align:center;font-size:calc(var(--u)*3.2);color:#ffd23e;line-height:1}
+#mute{position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*46);pointer-events:auto;font:inherit;font-size:calc(var(--u)*3.6);background:rgba(16,8,40,.7);color:#8fe9ff;border:calc(var(--u)*.5) solid #8fe9ff;padding:calc(var(--u)*1.6) calc(var(--u)*2.4);cursor:pointer}
+/* touch */
+#touch{pointer-events:none}
+#stick{position:absolute;left:calc(var(--u)*6);bottom:calc(var(--u)*22);width:calc(var(--u)*56);height:calc(var(--u)*56);border-radius:50%;border:calc(var(--u)*.8) solid rgba(255,255,255,.5);background:rgba(255,255,255,.08);pointer-events:auto}
+#knob{position:absolute;left:50%;top:50%;width:36%;height:36%;margin:-18% 0 0 -18%;border-radius:50%;background:rgba(255,210,62,.85)}
+.tb{position:absolute;pointer-events:auto;font:inherit;font-size:calc(var(--u)*4);color:#fff;background:rgba(16,8,40,.7);border:calc(var(--u)*.7) solid #fff;padding:calc(var(--u)*3);min-width:calc(var(--u)*24)}
+#tLand{left:calc(var(--u)*76);bottom:calc(var(--u)*24);border-color:#ffd23e;color:#ffd23e;font-size:calc(var(--u)*6);padding:calc(var(--u)*5)}
+#tTurbo{left:calc(var(--u)*76);bottom:calc(var(--u)*48)}
+#tPause{left:50%;top:calc(var(--u)*5);transform:translateX(-50%);min-width:0;padding:calc(var(--u)*2.4) calc(var(--u)*4)}
+#tUp{left:calc(var(--u)*124);bottom:calc(var(--u)*48)}#tDown{left:calc(var(--u)*124);bottom:calc(var(--u)*24)}
+/* schermen */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*5);pointer-events:auto;text-align:center}
+.dim{background:rgba(10,4,30,.62)}
+.logo{font-size:calc(var(--u)*22);line-height:1.05;letter-spacing:calc(var(--u)*1);color:#ffd23e;text-shadow:calc(var(--u)*1.2) calc(var(--u)*1.2) 0 #ff2e88,calc(var(--u)*2.4) calc(var(--u)*2.4) 0 #5a189a,calc(var(--u)*3.6) calc(var(--u)*3.6) 0 #000}
+.logo span{color:#8fe9ff}
+.tag{font-size:calc(var(--u)*4.4);color:#fff}
+.press{font-size:calc(var(--u)*6);color:#fff;animation:blink 1s steps(2) infinite}
+.h{font-size:calc(var(--u)*9);color:#ffd23e}
+.lbl{font-size:calc(var(--u)*3.8);color:#8fe9ff;margin-bottom:calc(var(--u)*2)}
+.row{display:flex;gap:calc(var(--u)*3);justify-content:center;flex-wrap:wrap}
+button.b{font:inherit;font-size:calc(var(--u)*4.4);color:#fff;background:#24153f;border:calc(var(--u)*.7) solid #6b4fb0;padding:calc(var(--u)*2.6) calc(var(--u)*4);cursor:pointer;line-height:1.3}
+button.b[aria-pressed="true"]{background:#ff2e88;border-color:#fff}
+button.b:focus-visible,button.b:hover{outline:calc(var(--u)*.8) solid #ffd23e}
+button.b.go{background:#ffd23e;color:#24153f;border-color:#fff}
+#levels{display:grid;gap:calc(var(--u)*2);width:78%}
+#levels button{display:flex;justify-content:space-between;gap:calc(var(--u)*4);text-align:left;align-items:center}
+#levels small{font-size:calc(var(--u)*3);color:#8fe9ff;text-align:right}
+.keys{font-size:calc(var(--u)*3);color:#cbbcf0;line-height:1.9}
+#over .big{font-size:calc(var(--u)*14);color:#ffd23e}
+#over ul{list-style:none;margin:0;padding:0;font-size:calc(var(--u)*3.6);line-height:1.8;color:#ff9db0}
+#over table{font-size:calc(var(--u)*4);border-spacing:calc(var(--u)*6) calc(var(--u)*1.2);margin:0 auto}
+#over td.me{color:#ffd23e}
+#pName{font:inherit;font-size:max(16px,calc(var(--u)*8));width:calc(var(--u)*112);text-align:center;text-transform:uppercase;color:#ffd23e;background:#24153f;border:calc(var(--u)*.7) solid #6b4fb0;border-radius:0;padding:calc(var(--u)*2.5);outline:0;user-select:text;-webkit-user-select:text;touch-action:auto}
+#pName:focus{border-color:#ffd23e}
+button.sw{width:calc(var(--u)*13);height:calc(var(--u)*13);padding:0;border:calc(var(--u)*.8) solid #24153f;cursor:pointer}
+button.sw[aria-pressed="true"]{border-color:#fff;outline:calc(var(--u)*.8) solid #ffd23e}
+button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
+#pPrev{width:calc(var(--u)*48);height:calc(var(--u)*36);image-rendering:pixelated;image-rendering:crisp-edges;background:#24153f;border:calc(var(--u)*.7) solid #6b4fb0}
+#load .bar{width:50%;height:calc(var(--u)*5);border:calc(var(--u)*.7) solid #fff}
+#load .bar i{display:block;height:100%;width:30%;background:#ff2e88;animation:ld 1s steps(8) infinite}
+#rotate{display:none;position:fixed;inset:0;z-index:9;background:#07040f;color:#ffd23e;align-items:center;justify-content:center;text-align:center;font-size:5vw;line-height:1.8;padding:8vw}
+@media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
+@keyframes ld{from{margin-left:0}to{margin-left:70%}}
+</style>
 </head>
-<body class="bg-slate-50 m-0 p-0">
-  <div id="root"></div>
+<body>
+<div id="stage">
+  <canvas id="scr" width="384" height="216"></canvas>
+  <div class="layer" id="hud" hidden>
+    <div id="mission" class="sh"><small id="mWord">VLIEG NAAR</small><b id="mName">…</b></div>
+    <div id="stats" class="sh">
+      <div>SCORE <b id="sScore">0</b></div>
+      <div class="t" id="sTimeBox">TIJD <b id="sTime">75</b></div>
+      <div class="r">REEKS <b id="sStreak">x1</b></div>
+    </div>
+    <button id="mute" title="Geluid aan/uit">GELUID AAN</button>
+    <div id="gauge" class="sh">KM/U <b id="gSpd">0</b><br>HOOGTE <b id="gAlt">0</b></div>
+    <div id="banner" class="sh" hidden></div>
+    <div id="mapwrap" title="Kaart groter/kleiner (M)"><canvas id="map"></canvas><div id="maphint" class="sh">M = KAART</div></div>
+  </div>
+  <div class="layer" id="touch" hidden>
+    <div id="stick"><div id="knob"></div></div>
+    <button class="tb" id="tLand">LAND</button><button class="tb" id="tTurbo">TURBO</button>
+    <button class="tb" id="tPause" aria-label="Pauze">II</button>
+    <button class="tb" id="tUp">▲</button><button class="tb" id="tDown">▼</button>
+  </div>
+  <div class="screen" id="load"><div class="tag">KAART WORDT GEBOUWD…</div><div class="bar"><i></i></div></div>
+  <div class="screen" id="title" hidden style="justify-content:flex-start;padding-top:6%">
+    <div class="logo sh">TOPO<br><span>CHOPPER</span></div>
+    <div class="tag sh">VLIEG. ZOEK. LAND. ALLEEN DE KAART HELPT JE.</div>
+    <div class="press sh" style="margin-top:auto;margin-bottom:8%">DRUK OP SPATIE OF TIK</div>
+  </div>
+  <div class="screen dim" id="pilot" hidden>
+    <div class="h sh">WIE VLIEGT ER?</div>
+    <div><div class="lbl">JE NAAM</div><input id="pName" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" aria-label="Je naam"></div>
+    <div><div class="lbl">KLEUR VAN JE HELI</div><div class="row" id="pCols"></div></div>
+    <canvas id="pPrev" width="64" height="48"></canvas>
+    <div class="row"><button class="b go" id="pOk">VERDER</button></div>
+  </div>
+  <div class="screen dim" id="menu" hidden>
+    <div class="h sh">KIES JE VLUCHT</div>
+    <div><div class="lbl">KAART</div><div class="row" id="mSets"></div></div>
+    <div><div class="lbl">STAND</div><div class="row" id="mModes"></div></div>
+    <div id="levels"></div>
+    <div class="row"><button class="b" id="mPilot">PILOOT</button><button class="b" id="mSound">GELUID: AAN</button></div>
+    <div class="keys">PIJLTJES = VLIEGEN · W/S = HOGER/LAGER · SHIFT = TURBO<br>SPATIE = LANDEN · M = KAART · P = PAUZE · ESC = MENU</div>
+  </div>
+  <div class="screen dim" id="pause" hidden><div class="h sh">PAUZE</div><div class="row"><button class="b go" id="pGo">VERDER</button><button class="b" id="pMenu">MENU</button></div></div>
+  <div class="screen dim" id="over" hidden></div>
+</div>
+<div id="rotate">DRAAI JE SCHERM<br>↻<br>TOPO CHOPPER SPEEL JE LIGGEND</div>
+<audio id="bgm" loop preload="auto"><source src="airwolf.ogg" type="audio/ogg"><source src="airwolf.m4a" type="audio/mp4"></audio>
+<script src="geo.js"></script>
+<script>
+'use strict';
+const RADAR=true; // minikaart als rond radarscherm; false = rechthoekige atlas-minikaart
+/* ================= Data: itemlijsten (overgenomen uit topo.html) ================= */
+const SETS={
+ eu:{geo:GEO_EU,titel:'EUROPA',
+  col:{A:'#b5cfa0',B:'#bfb2d6',C:'#f5cfa0',D:'#a9b1cf',E:'#f3cfd6',F:'#c9bfe0',G:'#e3b7c8',H:'#f5e17a',I:'#f4c28e',J:'#a8bca0',K:'#cfe0a6',L:'#b8b6dd',M:'#e2a86f',N:'#d2b6d8',O:'#9fc68f',P:'#f6c48f',Q:'#aab89a',R:'#f4df7c'},
+  ocol:{NLD:'#f0c070',UKR:'#d7d49a',BLR:'#f0e0a8',LTU:'#d6c3e3',LVA:'#f6d0a8',EST:'#c9d6ad',CZE:'#cdb6d9',SVK:'#f4dc8a',HUN:'#bcd3a8',ROU:'#f4d58e',MDA:'#e6c4d6',BGR:'#c5b8dd',SRB:'#efc9a0',HRV:'#f4e08e',SVN:'#c3d7a8',BIH:'#d7c3e2',MNE:'#f1cfa4',ALB:'#cfe2a8',MKD:'#e9c2cf',KOS:'#c3b9dd',LUX:'#e8bcd2',TUR:'#f2dca0',CYP:'#f2dca0',AND:'#e8bcd2',LIE:'#c3d7a8',MCO:'#f4c28e',SMR:'#f4c28e'},
+  klein:['I','M','G'],vlak:[],
+  raw:[
+['A','land','IJsland'],['B','land','Noorwegen'],['C','land','Zweden'],['D','land','Finland'],['E','land','Rusland'],['F','land','Polen'],['G','land','Denemarken'],['H','land','Duitsland'],['I','land','België'],['J','land','Verenigd Koninkrijk'],['K','land','Ierland'],['L','land','Frankrijk'],['M','land','Zwitserland'],['N','land','Oostenrijk'],['O','land','Portugal'],['P','land','Spanje'],['Q','land','Italië'],['R','land','Griekenland'],
+['1','stad','Oslo'],['2','stad','Stockholm'],['3','stad','Helsinki'],['4','stad','Moskou'],['5','stad','Warschau'],['6','stad','Kopenhagen'],['7','stad','Berlijn'],['8','stad','Brussel'],['9','stad','Londen'],['10','stad','Dublin'],['11','stad','Parijs'],['12','stad','Bern'],['13','stad','Wenen'],['14','stad','Lissabon'],['15','stad','Madrid'],['16','stad','Rome'],['17','stad','Athene'],
+['a','water','Atlantische Oceaan'],['b','water','Noordzee'],['c','water','Oostzee'],['d','water','Middellandse Zee'],['e','water','Zwarte Zee'],['f','water','Rijn'],['g','water','Donau'],['h','water','Rhône'],
+['i','berg','Pyreneeën'],['j','berg','Alpen'],['k','berg','Oeralgebergte'],['l','berg','Kaukasus']
+  ],
+  niveaus:[
+ {id:'eu_landen',naam:'Landen van Europa',cats:['land']},
+ {id:'eu_hoofdsteden',naam:'Hoofdsteden van Europa',cats:['stad'],namen:true},
+ {id:'eu_water',naam:'Wateren en gebergten',cats:['water','berg']},
+ {id:'eu_gemengd',naam:'Alles door elkaar',cats:['land','stad','water','berg']}
+  ]},
+ we:{geo:GEO_WE,titel:'WEST-EUROPA',
+  col:{A:'#f6dca4',B:'#c6d0ad',C:'#f2b56b',D:'#f5e07e',E:'#cfa97c',F:'#b8a08c',G:'#bcbfe2'},
+  ocol:{},
+  klein:['F','E','C'],vlak:['J'],
+  raw:[
+['A','land','Ierland'],['B','land','Verenigd Koninkrijk'],['C','land','Nederland'],['D','land','Duitsland'],['E','land','België'],['F','land','Luxemburg'],['G','land','Frankrijk'],
+['1','stad','Dublin'],['2','stad','Londen'],['3','stad','Brussel'],['4','stad','Luxemburg'],['5','stad','Berlijn'],['6','stad','Parijs'],
+['7','plaats','Glasgow'],['8','plaats','Liverpool'],['9','plaats','Antwerpen'],['10','plaats','Keulen'],['11','plaats','Hamburg'],['12','plaats','München'],['13','plaats','Bordeaux'],['14','plaats','Lyon'],['15','plaats','Marseille'],
+['a','water','Atlantische Oceaan'],['b','water','Het Kanaal'],['c','water','Noordzee'],['d','water','Oostzee'],['e','water','Middellandse Zee'],['f','water','Theems'],['g','water','Schelde'],['h','water','Maas'],['i','water','Rijn'],['j','water','Seine'],['k','water','Rhône'],
+['H','gebied','Schotland'],['I','gebied','Engeland'],['J','gebied','Ruhrgebied'],['K','gebied','Vlaanderen'],['L','gebied','Wallonië'],
+['l','berg','Ardennen'],['m','berg','Alpen'],['n','berg','Pyreneeën'],
+['NI','plus','Noord-Ierland'],['WA','plus','Wales'],['NM','plus','Normandië'],['BR','plus','Bretagne'],['CA','plus','Calais'],['SB','plus','Straatsburg'],['FF','plus','Frankfurt']
+  ],
+  niveaus:[
+ {id:'we_landen',naam:'Landen van West-Europa',cats:['land']},
+ {id:'we_steden',naam:'Hoofdsteden en steden',cats:['stad','plaats'],namen:true},
+ {id:'we_water',naam:'Wateren en gebergten',cats:['water','berg']},
+ {id:'we_gebieden',naam:'Gebieden',cats:['gebied'],namen:true},
+ {id:'we_gemengd',naam:'Alles door elkaar',cats:['land','stad','plaats','water','gebied','berg']},
+ {id:'we_plus',naam:'Plus TOPO',cats:['plus'],namen:true}
+  ]}
+};
+const LAGE_BERGEN={we:{l:.3}};           // Ardennen zijn heuvels, geen Alpen
+// Domtoren (thuis): staat op elke kaart. Utrecht zit niet in de stedenlijsten; de positie is berekend met een
+// kleinste-kwadratenfit van lengte/breedte op de steden die wel in geo.js staan (afwijking < 0,4 eenheid). r = landingsstraal.
+const DOM={eu:{p:[342.6,467.6],r:9},we:{p:[598.8,542.6],r:16}},DOM_SEC=10,DOM_PTS=50;
+const store={get(k,d){try{const v=localStorage.getItem('chopper-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('chopper-'+k,JSON.stringify(v))}catch(e){}}};
+const $=id=>document.getElementById(id);
+const COLS=[['ROOD','#e2473a'],['ORANJE','#f08a24'],['GEEL','#f2c230'],['GROEN','#3fae4a'],['BLAUW','#2f7fe0'],['PAARS','#8a4fd0'],['ROZE','#ff5fb0'],['ZWART','#3a3f4a']];
+const cleanName=v=>String(v||'').replace(/[^\p{L}\p{N} \-]/gu,'').trim().slice(0,10).trim().toUpperCase(); // ook veilig voor innerHTML
+let pilot=cleanName(store.get('naam','')),heliCol=COLS.some(c=>c[1]===store.get('kleur'))?store.get('kleur'):COLS[0][1];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 
-  <script type="text/babel">
-    const { useState } = React;
+/* ================= Actieve kaart + hit-logica (zonder DOM-SVG) ================= */
+let SETK=SETS[store.get('set','eu')]?store.get('set','eu'):'eu';
+let CFG,GEO,W,H,ITEMS,BY,ctyP,regP,landP,rivP,rivPts,mtPts;
+const hitCtx=document.createElement('canvas').getContext('2d');
+function parsePts(d){ // "Mx,yLx,y…" -> lijst van polylines
+  return d.split('M').filter(Boolean).map(s=>{const n=s.match(/-?\d+\.?\d*/g).map(Number);const p=[];for(let i=0;i+1<n.length;i+=2)p.push([n[i],n[i+1]]);return p});
+}
+function interp(pts,step){const out=[];for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const n=Math.max(1,Math.round(L/step));for(let k=0;k<n;k++)out.push([a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n])}out.push(pts[pts.length-1]);return out}
+function useSet(k){
+  SETK=k;CFG=SETS[k];GEO=CFG.geo;W=GEO.W;H=GEO.H;
+  GEO.regions=GEO.regions||{};GEO.rlabels=GEO.rlabels||{};GEO.rborders=GEO.rborders||[];
+  const kindOf=(code,cat)=>{if(cat==='land')return'land';if(cat==='berg')return'berg';if(cat==='water')return GEO.rivers[code]?'river':'sea';if(GEO.cities[code])return'stad';if(GEO.regions[code])return'gebied';return cat};
+  ITEMS=CFG.raw.map(([code,cat,name])=>({code,cat,name,id:cat+code,kind:kindOf(code,cat)}));
+  BY={};ITEMS.forEach(i=>BY[i.id]=i);
+  ctyP={};for(const c in GEO.quiz)ctyP[c]=new Path2D(GEO.quiz[c]);
+  regP={};for(const c in GEO.regions)regP[c]=new Path2D(GEO.regions[c]);
+  landP=[...Object.values(ctyP),...GEO.other.map(o=>new Path2D(o[1]))];
+  rivP={};for(const c in GEO.rivers)rivP[c]=GEO.rivers[c].map(d=>new Path2D(d));
+  rivPts={};for(const c in GEO.rivers){rivPts[c]=[];GEO.rivers[c].forEach(d=>parsePts(d).forEach(pl=>{if(pl.length>1)rivPts[c].push(...interp(pl,3));else rivPts[c].push(...pl)}))}
+  mtPts={};for(const c in GEO.mts)mtPts[c]=interp(GEO.mts[c],3);
+}
+const TOL={stad:14,river:9,berg:16};
+const inPath=(p,x,y)=>hitCtx.isPointInPath(p,x,y);
+function onLand(x,y){return landP.some(p=>inPath(p,x,y))}
+function inCountry(x,y){for(const c in ctyP)if(inPath(ctyP[c],x,y))return c;return null}
+function dmin(pts,x,y){let m=1e9;for(const p of pts){const d=Math.hypot(p[0]-x,p[1]-y);if(d<m)m=d}return m}
+function distTo(it,x,y){
+  if(it.kind==='stad')return Math.hypot(GEO.cities[it.code][0]-x,GEO.cities[it.code][1]-y);
+  if(it.kind==='river')return dmin(rivPts[it.code],x,y);
+  if(it.kind==='berg')return dmin(mtPts[it.code],x,y);
+  if(it.kind==='sea')return dmin(GEO.seas[it.code],x,y);
+  return 1e9;
+}
+function landAt(x,y,cands){const o=cands.filter(it=>it.kind==='gebied'&&inPath(regP[it.code],x,y));const c=inCountry(x,y);const it=c&&BY['land'+c];if(it&&cands.includes(it))o.push(it);return o}
+function identify(x,y,cands){ // wat ligt hier? (voor de "Dit is …"-feedback)
+  let best=null,bd=1e9;
+  for(const it of cands){if(it.kind==='land'||it.kind==='sea'||it.kind==='gebied')continue;const d=distTo(it,x,y);if(d<=TOL[it.kind]&&d<bd){bd=d;best=it}}
+  if(best)return best;
+  if(onLand(x,y)){const o=landAt(x,y,cands);return o.length?o[0]:null}
+  let s=null;bd=1e9;for(const it of cands){if(it.kind!=='sea')continue;const d=distTo(it,x,y);if(d<bd){bd=d;s=it}}
+  return s;
+}
+function isHit(it,x,y){
+  if(it.kind==='land'){ // vergevingsgezind: ook goed als je net over de grens staat, en ruimer bij kleine landen
+    if(inCountry(x,y)===it.code)return true;
+    for(let a=0;a<6;a++)if(inCountry(x+Math.cos(a*1.047)*3,y+Math.sin(a*1.047)*3)===it.code)return true;
+    const l=GEO.labels[it.code];return CFG.klein.includes(it.code)&&Math.hypot(l[0]-x,l[1]-y)<12;
+  }
+  if(it.kind==='gebied')return inPath(regP[it.code],x,y);
+  if(it.kind==='sea'){if(onLand(x,y))return false;let bd=1e9,s=null;ITEMS.forEach(i=>{if(i.kind!=='sea')return;const d=distTo(i,x,y);if(d<bd){bd=d;s=i}});return s===it}
+  return distTo(it,x,y)<=TOL[it.kind]*1.25;
+}
+function centerOf(it){
+  if(it.kind==='land')return GEO.labels[it.code];if(it.kind==='gebied')return GEO.rlabels[it.code];if(it.kind==='stad')return GEO.cities[it.code];
+  if(it.kind==='sea')return GEO.seas[it.code][0];return GEO.wl[it.code];
+}
+function wordFor(it){if(it.kind==='land')return'het land';if(it.kind==='stad')return it.cat==='stad'?'de hoofdstad':'de stad';if(it.kind==='gebied')return'het gebied';if(it.kind==='berg')return'het gebergte';if(it.kind==='river')return'de rivier';if(/^het /i.test(it.name))return'';return /oceaan/i.test(it.name)?'de oceaan':'de zee'}
 
-    // Coördinaten zijn nu haarscherp afgestemd op de exacte locaties van de rode stippen
-    const topoData = [
-      // Hoofdsteden (Open cirkels)
-      { id: '1', name: 'Leeuwarden', type: 'hoofdstad', x: '41.5%', y: '35.5%', label: '1' },
-      { id: '2', name: 'Groningen (stad)', type: 'hoofdstad', x: '70.5%', y: '34.5%', label: '2' },
-      { id: '3', name: 'Assen', type: 'hoofdstad', x: '70.5%', y: '61.5%', label: '3' },
-      
-      // Plaatsen (Rode stippen)
-      { id: '4', name: 'Sneek', type: 'plaats', x: '34.0%', y: '52.0%', label: '4' },
-      { id: '5', name: 'Heerenveen', type: 'plaats', x: '45.3%', y: '59.2%', label: '5' },
-      { id: '6', name: 'Drachten', type: 'plaats', x: '53.0%', y: '45.5%', label: '6' },
-      { id: '7', name: 'Delfzijl', type: 'plaats', x: '84.8%', y: '24.3%', label: '7' },
-      { id: '8', name: 'Veendam', type: 'plaats', x: '82.5%', y: '43.5%', label: '8' },
-      { id: '9', name: 'Meppel', type: 'plaats', x: '56.5%', y: '82.5%', label: '9' },
-      { id: '10', name: 'Hoogeveen', type: 'plaats', x: '68.3%', y: '77.5%', label: '10' },
-      { id: '11', name: 'Emmen', type: 'plaats', x: '87.0%', y: '73.0%', label: '11' },
-      
-      // Plus TOPO (Rode stippen)
-      { id: 'HA', name: 'Harlingen', type: 'plus', x: '24.5%', y: '40.0%', label: 'HA' },
-      { id: 'WI', name: 'Winschoten', type: 'plus', x: '92.5%', y: '42.0%', label: 'WI' },
-      { id: 'EH', name: 'Eemshaven', type: 'plus', x: '81.0%', y: '18.0%', label: 'EH' },
-      
-      // Provincies
-      { id: 'A', name: 'Friesland', type: 'provincie', x: '46.5%', y: '48.0%', label: 'A' },
-      { id: 'B', name: 'Groningen', type: 'provincie', x: '65.5%', y: '24.5%', label: 'B' },
-      { id: 'C', name: 'Drenthe', type: 'provincie', x: '75.0%', y: '64.0%', label: 'C' },
-      
-      // Gebieden (Eilanden)
-      { id: 'D', name: 'Vlieland', type: 'gebied', x: '11.5%', y: '30.5%', label: 'D' },
-      { id: 'E', name: 'Terschelling', type: 'gebied', x: '22.5%', y: '17.5%', label: 'E' },
-      { id: 'F', name: 'Ameland', type: 'gebied', x: '41.5%', y: '14.0%', label: 'F' },
-      { id: 'G', name: 'Schiermonnikoog', type: 'gebied', x: '58.5%', y: '11.0%', label: 'G' },
-      
-      // Wateren
-      { id: 'a', name: 'Noordzee', type: 'water', x: '16.0%', y: '7.0%', label: 'a' },
-      { id: 'b', name: 'Waddenzee', type: 'water', x: '29.0%', y: '25.0%', label: 'b' },
-      { id: 'c', name: 'IJsselmeer', type: 'water', x: '21.0%', y: '77.0%', label: 'c' },
-      { id: 'd', name: 'Afsluitdijk', type: 'water', x: '16.5%', y: '52.5%', label: 'd' }
-    ];
-
-    function App() {
-      const [gameState, setGameState] = useState('menu'); 
-      const [quizQueue, setQuizQueue] = useState([]);
-      const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-      const [score, setScore] = useState(0);
-      const [attemptsOnCurrent, setAttemptsOnCurrent] = useState(0);
-      const [feedback, setFeedback] = useState(null); 
-      const [selectedPracticeItem, setSelectedPracticeItem] = useState(null);
-      const [flashItemId, setFlashItemId] = useState(null);
-      const [flashColor, setFlashColor] = useState('');
-      const [imgError, setImgError] = useState(false);
-
-      const startPractice = () => {
-        setGameState('practice');
-        setSelectedPracticeItem(null);
-        setFeedback(null);
-        setImgError(false);
-      };
-
-      const startQuiz = () => {
-        const shuffled = [...topoData].sort(() => Math.random() - 0.5);
-        setQuizQueue(shuffled);
-        setCurrentQuestionIdx(0);
-        setScore(0);
-        setAttemptsOnCurrent(0);
-        setFeedback(null);
-        setGameState('quiz');
-        setImgError(false);
-      };
-
-      const handleItemClick = (item) => {
-        if (gameState === 'practice') {
-          setSelectedPracticeItem(item);
-          setTimeout(() => setSelectedPracticeItem(null), 3000);
-        } else if (gameState === 'quiz') {
-          const targetItem = quizQueue[currentQuestionIdx];
-          
-          if (item.id === targetItem.id) {
-            setFlashItemId(item.id);
-            setFlashColor('green');
-            
-            if (attemptsOnCurrent === 0) {
-              setScore(score + 1);
-              setFeedback({ type: 'success', text: `Super! Dat is inderdaad ${item.name}.` });
-            } else {
-              setFeedback({ type: 'success', text: `Goed gevonden! Dat is ${item.name}.` });
-            }
-
-            setTimeout(() => {
-              setFlashItemId(null);
-              setFeedback(null);
-              if (currentQuestionIdx + 1 < quizQueue.length) {
-                setCurrentQuestionIdx(currentQuestionIdx + 1);
-                setAttemptsOnCurrent(0);
-              } else {
-                setGameState('finished');
-              }
-            }, 1500);
-
-          } else {
-            setFlashItemId(item.id);
-            setFlashColor('red');
-            setAttemptsOnCurrent(attemptsOnCurrent + 1);
-            setFeedback({ type: 'error', text: `Oeps, dat is ${item.name}. Zoek: ${targetItem.name}` });
-            
-            setTimeout(() => {
-              setFlashItemId(null);
-              if (attemptsOnCurrent >= 2) {
-                setFlashItemId(targetItem.id);
-                setFlashColor('yellow'); 
-                setTimeout(() => setFlashItemId(null), 1000);
-              }
-            }, 1200);
-          }
+/* ================= Wereld bouwen: hoogtekaart + kleurkaart ================= */
+const S=2,MG=60,HMAXU=26,HSC=HMAXU/255;   // px per kaarteenheid, marge rond de kaart, max hoogte in eenheden
+let MW,MH,FW,FH,cmap,cmap2,hmap,cities=[];
+function hash(x,y){let n=Math.imul(x,374761393)+Math.imul(y,668265263)|0;n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296}
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+function fbm(x,y,o){let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*vnoise(x*f,y*f);a*=.5;f*=2}return s}
+function blur(a,w,h,r,passes){
+  const t=new Float32Array(a.length),n=2*r+1;
+  for(let p=0;p<passes;p++){
+    for(let y=0;y<h;y++){const o=y*w;let acc=0;for(let x=-r;x<=r;x++)acc+=a[o+clamp(x,0,w-1)];for(let x=0;x<w;x++){t[o+x]=acc/n;const q=x-r,b=x+r+1;acc+=a[o+(b<w?b:w-1)]-a[o+(q>0?q:0)]}}
+    for(let x=0;x<w;x++){let acc=0;for(let y=-r;y<=r;y++)acc+=t[clamp(y,0,h-1)*w+x];for(let y=0;y<h;y++){a[y*w+x]=acc/n;const q=y-r,b=y+r+1;acc+=t[(b<h?b:h-1)*w+x]-t[(q>0?q:0)*w+x]}}
+  }
+}
+const rgb=(r,g,b)=>(255<<24|b<<16|g<<8|r)>>>0;
+const hex=s=>[parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];
+const PAL={
+  sea:['#16307c','#1d459c','#2a62bd','#3d8ad6','#74c4e6'].map(hex),
+  sand:hex('#e6d59a'),river:hex('#3d8ad6'),
+  grass:['#3d8a3a','#4c9d42','#62b04c','#7cc05a'].map(hex),
+  north:['#3b7650','#4a875a','#6a9a72','#86ac84'].map(hex),
+  dry:['#8aa646','#a9b556','#c4b964','#d6c476'].map(hex),
+  high:['#6f8648','#857f52','#8d7a62'].map(hex),
+  rock:['#76685c','#8a7a6a','#9c8c7c'].map(hex),
+  snow:['#aab6e2','#dfe6fb','#ffffff'].map(hex)
+};
+// Scandinavisch Hoogland: alleen reliëf (geen quiz-item). Ligging afgeleid uit de gedeelde grens Noorwegen/Zweden,
+// gladgestreken en naar de Noorse kant geschoven; daarna door naar het zuidwesten van Noorwegen (richting landlabel).
+function scandRidge(){
+  const n=ITEMS.find(i=>i.kind==='land'&&i.name==='Noorwegen'),z=ITEMS.find(i=>i.kind==='land'&&i.name==='Zweden');if(!n||!z)return null;
+  const zp=parsePts(GEO.quiz[z.code]).flat(),np=parsePts(GEO.quiz[n.code]).sort((a,b)=>b.length-a.length)[0];
+  const b=np.filter(p=>zp.some(q=>Math.abs(q[0]-p[0])<1.2&&Math.abs(q[1]-p[1])<1.2)).sort((a,c)=>a[1]-c[1]);
+  if(b.length<10)return null;
+  const sm=b.map((_,i)=>{let x=0,y=0,k=0;for(let j=Math.max(0,i-5);j<=Math.min(b.length-1,i+5);j++){x+=b[j][0];y+=b[j][1];k++}return[x/k,y/k]});
+  const out=[];
+  for(let i=0;i<sm.length;i+=4){const a=sm[Math.max(0,i-4)],c=sm[Math.min(sm.length-1,i+4)];let nx=c[1]-a[1],ny=-(c[0]-a[0]);const l=Math.hypot(nx,ny)||1;nx/=l;ny/=l;if(nx>0){nx=-nx;ny=-ny}
+    out.push([sm[i][0]+nx*10,sm[i][1]+ny*10])}
+  const l=GEO.labels[n.code];out.push([l[0]-8,l[1]+20]);
+  return out;
+}
+function buildWorld(){
+  FW=Math.ceil(W+2*MG);FH=Math.ceil(H+2*MG);MW=FW*S;MH=FH*S;
+  const mts=LAGE_BERGEN[SETK]||{};
+  // 1) maskers op halve resolutie (1 px = 1 eenheid): R=land, G=water, B=gebergte
+  const cv=document.createElement('canvas');cv.width=FW;cv.height=FH;let c=cv.getContext('2d',{willReadFrequently:true});
+  const paint=(sc)=>{
+    c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.fillStyle='#000';c.fillRect(0,0,cv.width,cv.height);
+    c.setTransform(sc,0,0,sc,MG*sc,MG*sc);c.globalCompositeOperation='lighter';
+    c.fillStyle='#f00';landP.forEach(p=>c.fill(p));
+    c.fillStyle='#0f0';c.strokeStyle='#0f0';GEO.lakes.forEach(d=>c.fill(new Path2D(d)));
+    c.lineWidth=1.5;c.lineCap=c.lineJoin='round';for(const k in GEO.rivers)GEO.rivers[k].forEach(d=>c.stroke(new Path2D(d)));
+  };
+  paint(1);
+  c.strokeStyle='#00f';c.lineWidth=13;
+  for(const k in GEO.mts){c.globalAlpha=mts[k]||1;c.beginPath();GEO.mts[k].forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke()}
+  const sr=scandRidge();if(sr){c.globalAlpha=.6;c.lineWidth=17;c.beginPath();sr.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke()}
+  c.globalAlpha=1;
+  let d=c.getImageData(0,0,FW,FH).data;
+  const n=FW*FH,coast=new Float32Array(n),inl=new Float32Array(n),mt=new Float32Array(n),wat=new Float32Array(n);
+  for(let i=0;i<n;i++){coast[i]=inl[i]=d[i*4]/255;wat[i]=d[i*4+1]/255;mt[i]=d[i*4+2]/255}
+  blur(coast,FW,FH,3,2);blur(inl,FW,FH,16,2);blur(mt,FW,FH,6,3);
+  // 2) hoogte
+  const hF=new Float32Array(n);hmap=new Uint8Array(n);
+  for(let y=0,i=0;y<FH;y++)for(let x=0;x<FW;x++,i++){
+    const cs=coast[i];if(cs<=.5){hF[i]=0;continue}
+    let r=clamp((cs-.5)*2.4,0,1);r=r*r*(3-2*r);
+    const hills=Math.max(0,fbm(x*.022,y*.022,4)-.42)*9*clamp((inl[i]-.6)*3,0,1);
+    const m=clamp(mt[i]*1.7,0,1),ridge=1-Math.abs(2*fbm(x*.07+9,y*.07+3,3)-1);
+    let h=r*(.35+hills)+Math.pow(m,1.4)*(HMAXU-4)*(.4+.6*ridge);
+    h*=1-.75*wat[i];
+    hF[i]=h;hmap[i]=clamp(h/HMAXU*255,1,255);
+  }
+  // 3) kleur op volle resolutie: R=land, G=water, B=grens
+  cv.width=MW;cv.height=MH;c=cv.getContext('2d',{willReadFrequently:true});
+  paint(S);
+  c.strokeStyle='#00f';c.lineWidth=.45;landP.forEach(p=>c.stroke(p));
+  d=c.getImageData(0,0,MW,MH).data;
+  cmap=new Uint32Array(MW*MH);
+  for(let y=0,i=0;y<MH;y++){
+    const hy=y>>1,lat=(y/S-MG)/H;
+    for(let x=0;x<MW;x++,i++){
+      const hx=x>>1,hi=hy*FW+hx,di=i*4,nz=hash(x,y);let col,lit=1;
+      if(d[di]<110){ // zee: dieptetint, lichter bij de kust
+        const t=clamp(inl[hi]*2+(nz-.5)*.06,0,.999);col=PAL.sea[t>.88?4:t>.72?3:t>.5?2:t>.25?1:0];
+      }else if(d[di+1]>100){col=PAL.river}
+      else{
+        const h=hF[hi];
+        if(hx>0&&hy>0&&hx<FW-1&&hy<FH-1)lit=clamp(1+.38*((hF[hi+1]-hF[hi-1])*.9-(hF[hi+FW]-hF[hi-FW])*.45),.5,1.4);
+        lit=Math.round(lit*12)/12;
+        const v=fbm(x*.012,y*.012,3)+(nz-.5)*.3;
+        if(coast[hi]<.6&&h<1)col=PAL.sand;
+        else if(h>15+nz*3)col=PAL.snow[lit+(nz-.5)*.12>1.12?2:lit>.92?1:0];
+        else if(h>9+nz*3){col=PAL.rock[clamp(v*3|0,0,2)]}
+        else if(h>4.5+nz*2.5){col=PAL.high[clamp(v*3|0,0,2)]}
+        else{
+          const dry=(lat-.6)*2.6+(fbm(x*.006+5,y*.006,2)-.5)*1.6+(nz-.5)*.25,nor=(.3-lat)*3+(nz-.5)*.25;
+          const p=dry>.35?PAL.dry:nor>.35?PAL.north:PAL.grass;col=p[clamp(v*4.4-.2|0,0,3)];
         }
-      };
-
-      const renderMapItem = (item) => {
-        const isFlashing = flashItemId === item.id;
-        const isCity = ['hoofdstad', 'plaats', 'plus'].includes(item.type);
-        
-        let highlightClass = 'bg-white/0 hover:bg-white/20';
-        if (isFlashing) {
-          if (flashColor === 'green') highlightClass = 'bg-green-500/50 ring-4 ring-green-500 scale-110 shadow-lg shadow-green-500/50';
-          if (flashColor === 'red') highlightClass = 'bg-red-500/50 ring-4 ring-red-500 scale-110 shadow-lg shadow-red-500/50';
-          if (flashColor === 'yellow') highlightClass = 'bg-yellow-400/50 ring-4 ring-yellow-400 scale-110 animate-pulse shadow-lg shadow-yellow-400/50';
-        }
-
-        const isWater = item.type === 'water';
-
-        return (
-          <div 
-            key={`item-${item.id}`} 
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
-            style={{ left: item.x, top: item.y }}
-          >
-            {/* De onzichtbare, aanklikbare knop */}
-            <button
-              className={`absolute z-20 rounded-full touch-manipulation transition-all duration-200 ease-out flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 ${highlightClass}`}
-              onClick={(e) => { e.stopPropagation(); handleItemClick(item); }}
-              aria-label={item.name}
-            />
-            
-            {/* Tekstlabel (schuift bij steden iets naar rechts zodat de rode stip zichtbaar blijft) */}
-            <span 
-              className={`absolute z-10 font-black pointer-events-none select-none drop-shadow-[0_2px_2px_rgba(255,255,255,0.9)] 
-                ${isWater ? 'text-blue-800 text-xl sm:text-3xl' : 'text-slate-800 text-lg sm:text-2xl'}
-              `}
-              style={{ transform: isCity ? 'translate(14px, 0px)' : 'translate(0px, 0px)' }}
-            >
-              {item.label}
-            </span>
-          </div>
-        );
-      };
-
-      return (
-        <div className="min-h-screen bg-slate-50 font-sans flex flex-col items-center py-4 px-2 sm:py-8 sm:px-4">
-          
-          {/* Header */}
-          <div className="max-w-4xl w-full flex justify-between items-center mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-blue-600 p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-white text-xl">
-                🗺️
-              </div>
-              <h1 className="text-lg sm:text-2xl font-bold text-slate-800 leading-tight">Topo Noord-Nederland</h1>
-            </div>
-            
-            {gameState !== 'menu' && (
-              <button 
-                onClick={() => setGameState('menu')}
-                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors text-sm sm:text-base"
-              >
-                🔄 <span className="hidden sm:inline">Menu</span>
-              </button>
-            )}
-          </div>
-
-          <div className="max-w-4xl w-full bg-white rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden border-2 sm:border-4 border-white flex flex-col relative">
-            
-            {/* MENU STATE */}
-            {gameState === 'menu' && (
-              <div className="p-6 sm:p-12 text-center flex flex-col items-center">
-                <div className="text-6xl mb-4">🌍</div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-6">Klaar voor de topotoets?</h2>
-                <p className="text-slate-600 mb-8 max-w-md text-base sm:text-lg">
-                  Oefen met de blinde kaart uit je werkboek. Wijs de goede plekken aan!
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-md">
-                  <button 
-                    onClick={startPractice}
-                    className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-6 rounded-xl transition-all shadow-md active:scale-95"
-                  >
-                    📖 Oefenen
-                  </button>
-                  
-                  <button 
-                    onClick={startQuiz}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white text-base sm:text-lg font-bold py-3 sm:py-4 px-6 rounded-xl transition-all shadow-md active:scale-95"
-                  >
-                    ▶️ Test Mij!
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* MAP STATE (Practice or Quiz) */}
-            {(gameState === 'practice' || gameState === 'quiz') && (
-              <div className="flex flex-col w-full h-full">
-                
-                <div className="bg-white p-3 sm:p-4 border-b border-slate-100 flex items-center justify-between min-h-[64px] z-10">
-                  {gameState === 'practice' ? (
-                    <span className="text-base sm:text-lg font-bold text-slate-700 w-full text-center">
-                      👆 Klik op een gebied of letter in de kaart
-                    </span>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2 flex-1">
-                      <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                        Vraag {currentQuestionIdx + 1}/{quizQueue.length}
-                      </span>
-                      <span className="text-lg sm:text-xl font-black text-slate-800 flex items-center flex-wrap gap-1.5">
-                        Waar ligt <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">{quizQueue[currentQuestionIdx]?.name}</span>?
-                      </span>
-                    </div>
-                  )}
-
-                  {gameState === 'quiz' && (
-                    <div className="bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-200 flex items-center gap-1.5 ml-2 shadow-sm">
-                      <span className="text-yellow-500 text-xl">🏆</span>
-                      <span className="font-bold text-lg sm:text-xl text-slate-700">{score}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* LOKALE SVG KAART RENDERING */}
-                {/* OPLOSSING: 'aspectRatio' verwijderd, de afbeelding bepaalt nu zelf de hoogte! */}
-                <div className="w-full relative bg-[#e3ecf5] overflow-hidden">
-                  
-                  {imgError ? (
-                    <div className="flex flex-col items-center justify-center p-8 text-center text-slate-500 z-0 bg-sky-50 min-h-[400px]">
-                      <div className="text-5xl mb-3">⚠️</div>
-                      <h3 className="font-bold text-xl text-slate-700 mb-2">Kaart 'file.svg' niet gevonden</h3>
-                      <p className="max-w-md text-sm">
-                        Omdat je nu in een online test-omgeving zit, kan <b>file.svg</b> niet getoond worden.
-                        <br/><br/>
-                        <b>Oplossing:</b> Sla deze code op als <code>index.html</code> en plaats deze in exact dezelfde map als jouw <code>file.svg</code>. Open daarna <code>index.html</code> in je browser.
-                      </p>
-                    </div>
-                  ) : (
-                    <img 
-                      src="file.svg" 
-                      alt="Blinde Kaart Noord-Nederland" 
-                      className="w-full h-auto block pointer-events-none z-0" 
-                      onError={() => setImgError(true)}
-                    />
-                  )}
-
-                  {/* De interactieve knoppen en letters overlay */}
-                  <div className="absolute inset-0 w-full h-full z-10">
-                    {topoData.map(item => renderMapItem(item))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* FINISHED STATE */}
-            {gameState === 'finished' && (
-              <div className="p-8 sm:p-12 text-center flex flex-col items-center bg-green-50 z-20">
-                <div className="text-6xl sm:text-8xl mb-4 sm:mb-6 animate-bounce">🏆</div>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-green-700 mb-2 sm:mb-4">Gefeliciteerd!</h2>
-                <p className="text-lg sm:text-xl text-slate-700 mb-6 sm:mb-8">
-                  Je hebt de topo-toets afgerond! Je score is:
-                  <span className="block text-4xl sm:text-5xl font-black text-green-600 mt-2 sm:mt-4">
-                    {score} / {topoData.length}
-                  </span>
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-sm">
-                  <button 
-                    onClick={startQuiz}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-md active:scale-95"
-                  >
-                    🔄 Nog een keer
-                  </button>
-                  <button 
-                    onClick={() => setGameState('menu')}
-                    className="flex-1 flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-6 rounded-xl transition-colors shadow-md active:scale-95"
-                  >
-                    Naar menu
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* POP-UPS */}
-          {feedback && (
-            <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-max z-50 pointer-events-none">
-              <div className={`mx-auto px-4 py-3 sm:px-6 sm:py-4 rounded-2xl shadow-xl flex items-center gap-3 text-sm sm:text-lg font-bold text-white transform transition-all animate-bounce ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-                <span>{feedback.type === 'success' ? '✅' : '❌'}</span>
-                <span>{feedback.text}</span>
-              </div>
-            </div>
-          )}
-
-          {selectedPracticeItem && (
-            <div className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-max z-50 pointer-events-none">
-              <div className="mx-auto bg-slate-800 text-white px-4 py-3 sm:px-8 sm:py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 text-lg sm:text-2xl font-bold animate-in fade-in slide-in-from-bottom-4">
-                <span className="bg-white text-slate-800 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-base sm:text-xl shrink-0">
-                  {selectedPracticeItem.label}
-                </span>
-                <span className="truncate">{selectedPracticeItem.name}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+        if(d[di+2]>90&&coast[hi]>.93)lit*=.78; // landsgrens
+      }
+      cmap[i]=rgb(clamp(col[0]*lit,0,255)|0,clamp(col[1]*lit,0,255)|0,clamp(col[2]*lit,0,255)|0);
     }
+  }
+  // 4) steden: grijze vlek met stratenpatroon + lijst voor de sprites
+  cities=[];
+  const spots=Object.keys(GEO.cities).map(k=>{const it=ITEMS.find(i=>i.kind==='stad'&&i.code===k);return{p:GEO.cities[k],cap:!it||it.cat==='stad',spr:it&&lmSpr[it.name]}});
+  spots.push({p:DOM[SETK].p,cap:false,spr:lmSpr.Dom});
+  for(const sp of spots){
+    const[cx,cy]=sp.p,cap=sp.cap,R=(cap?2.8:2)*S;
+    cities.push({x:cx,y:cy,cap,seed:cities.length,spr:sp.spr});
+    const px=(cx+MG)*S|0,py=(cy+MG)*S|0;
+    for(let y=-R;y<=R;y++)for(let x=-R;x<=R;x++){
+      if(x*x+y*y>R*R+hash(px+x,py+y)*6)continue;const i=(py+y)*MW+px+x;if(d[i*4]<110)continue;
+      const road=((px+x)%3===0)||((py+y)%3===0);cmap[i]=road?rgb(74,70,88):hash(px+x>>1,py+y>>1)>.5?rgb(178,170,178):rgb(140,132,150);
+    }
+  }
+  // 5) mip (halve resolutie) voor ver weg
+  cmap2=new Uint32Array(n);
+  for(let y=0,i=0;y<FH;y++)for(let x=0;x<FW;x++,i++){
+    const j=(y*2)*MW+x*2,a=cmap[j],b=cmap[j+1],e=cmap[j+MW],f=cmap[j+MW+1];
+    cmap2[i]=rgb(((a&255)+(b&255)+(e&255)+(f&255))>>2,((a>>8&255)+(b>>8&255)+(e>>8&255)+(f>>8&255))>>2,((a>>16&255)+(b>>16&255)+(e>>16&255)+(f>>16&255))>>2);
+  }
+}
+function groundAt(x,y){const hx=x+MG|0,hy=y+MG|0;if(x+MG<0||y+MG<0||hx>=FW||hy>=FH)return 0;return hmap[hy*FW+hx]*HSC}
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+/* ================= Lucht: Outrun-zonsondergang als panorama ================= */
+const RW=384,RH=216,K=RW/2,PW=RW*4,PH=330,PHZ=220;
+const FOG=[236,150,126],FOGC=rgb(FOG[0],FOG[1],FOG[2]);
+const sky=new Uint32Array(PW*PH),cloud=new Uint32Array(PW*PH);
+function buildSky(){
+  const stops=[[0,[18,10,58]],[.38,[70,22,110]],[.62,[176,44,124]],[.8,[250,104,84]],[.93,[255,180,96]],[1,[255,226,160]]];
+  const sunX=PW*.75,sunY=PHZ-30,sunR=40;
+  for(let y=0;y<PH;y++){
+    let col;
+    if(y>=PHZ)col=FOG;
+    else{let t=y/PHZ;t=Math.floor(t*40)/40; // bandjes
+      let k=0;while(k<stops.length-2&&t>stops[k+1][0])k++;const a=stops[k],b=stops[k+1],f=clamp((t-a[0])/(b[0]-a[0]),0,1);
+      col=[0,1,2].map(j=>a[1][j]+(b[1][j]-a[1][j])*f);}
+    const base=rgb(col[0]|0,col[1]|0,col[2]|0);
+    for(let x=0;x<PW;x++){
+      let c=base;
+      if(y<PHZ){
+        const dx=x-sunX,dy=y-sunY,dd=dx*dx+dy*dy;
+        if(dd<sunR*sunR){const band=dy>-6?((dy+6)%9)<(1.5+(dy+6)*.09):false; // strepen onderin de zon
+          if(!band){const f=(dy+sunR)/(2*sunR);c=rgb(255,(236-f*150)|0,(120-f*40)|0)}}
+        else if(y<PHZ*.55&&hash(x,y)>.9985)c=rgb(255,240,255); // sterren
+      }
+      sky[y*PW+x]=c;
+    }
+  }
+  // wolken: platte pixelwolken met lichte onderkant
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  for(let k=0;k<26;k++){
+    const cx=rnd()*PW,cy=PHZ-25-rnd()*120,w=30+rnd()*70,hh=5+rnd()*7;
+    for(let y=-hh;y<=hh;y++)for(let x=-w;x<=w;x++){
+      const e=(x/w)*(x/w)+(y/hh)*(y/hh)+ (vnoise((cx+x)*.09,(cy+y)*.3)-.5)*.9;if(e>1)continue;
+      const X=((cx+x|0)%PW+PW)%PW,Y=cy+y|0;if(Y<0||Y>=PHZ)continue;
+      cloud[Y*PW+X]=y>hh*.25?rgb(255,170,150):y>-hh*.3?rgb(206,110,160):rgb(128,70,150);
+    }
+  }
+}
+
+/* ================= Sprites: steden + heli ================= */
+function makeCitySprite(cap,seed){
+  const w=48,h=48,cv=document.createElement('canvas');cv.width=w;cv.height=h;const c=cv.getContext('2d');
+  let s=seed*97+13;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+  const box=(x,bw,bh,col)=>{c.fillStyle=col;c.fillRect(x,h-bh,bw,bh);c.fillStyle='rgba(0,0,0,.28)';c.fillRect(x+bw-2,h-bh,2,bh);
+    for(let yy=h-bh+2;yy<h-2;yy+=3)for(let xx=x+1;xx<x+bw-3;xx+=3){c.fillStyle=rnd()>.45?'#ffe27a':'#3a2c5c';c.fillRect(xx,yy,1,2)}};
+  const cols=['#8e86a8','#a59ab8','#6f6890','#b7a6a6','#7d86a6'];
+  const nb=cap?9:6;
+  for(let i=0;i<nb;i++){const bw=5+(rnd()*5|0),x=2+(rnd()*(w-bw-4)|0);box(x,bw,(cap?10:7)+(rnd()*(cap?16:9)|0),cols[i%cols.length])}
+  let beacon=null;
+  if(cap){box(21,7,36,'#c9c0de');c.fillStyle='#d8d0ea';c.fillRect(23,6,3,6);c.fillStyle='#fff';c.fillRect(24,1,1,5);beacon=[24,0]}
+  const d=c.getImageData(0,0,w,h).data,px=new Uint32Array(w*h);
+  for(let i=0;i<w*h;i++)px[i]=d[i*4+3]>128?rgb(d[i*4],d[i*4+1],d[i*4+2]):0;
+  return{w,h,px,beacon,uw:cap?5.5:4}; // uw = breedte in kaarteenheden
+}
+// Landmarks: herkenningspunten bij hoofdsteden (decor, geen quiz-item, geen namen) + de Domtoren van Utrecht.
+// Per stuk: [breedte, hoogte in px, breedte in kaarteenheden, tekenfunctie, baken]. Sleutel = naam van de stad in de itemlijst.
+const LANDMARKS={
+ Dom:[28,88,4.4,(c,R)=>{const st='#b9a88c',sh='#8f7f68',li='#d6c8ae',dk='#3a3040';
+   R(5,52,18,36,st);R(20,52,3,36,sh);R(7,26,14,26,st);R(18,26,3,26,sh);R(9,10,10,16,st);R(16,10,3,16,sh); // twee vierkante geledingen + achtkantige lantaarn
+   R(4,51,20,2,li);R(6,25,16,2,li);R(8,9,12,1,li);                                                        // omlopen
+   [10,13,16].forEach(x=>R(x,12,2,12,dk));[9,13,17].forEach(x=>R(x,30,2,14,dk));[8,13,18].forEach(x=>R(x,58,2,12,dk));R(11,76,6,12,dk); // open lantaarn, galmgaten, poort
+   for(let y=1;y<9;y++){const hw=Math.ceil(y*5/8);R(14-hw,y,hw*2,1,'#4a5560')}R(13,0,2,1,'#ffd23e')}],     // spits
+ Parijs:[44,76,6.4,(c,R,w,h)=>{const cx=w/2,ir='#7a6652',li='#a08a70',hwAt=t=>1+19*Math.pow(t,2.1); // Eiffeltoren
+   for(let y=4;y<h;y++){const t=(y-4)/(h-4),hw=hwAt(t);R(Math.round(cx-hw),y,Math.round(hw*2),1,ir);R(Math.round(cx-hw),y,1,1,li);
+     if(t>.62){const g=(hw-4)*Math.min(1,Math.sqrt((t-.62)/.12));if(g>=.5)c.clearRect(Math.round(cx-g),y,Math.round(g*2),1)}
+     else if(t>.3&&hw>3&&y%2)c.clearRect(Math.round(cx-hw+2),y,Math.round(hw*2-4),1)}
+   [.3,.62].forEach(t=>{const hw=hwAt(t)+1;R(Math.round(cx-hw),4+Math.round(t*(h-4)),Math.round(hw*2),2,li)});R(cx-1,0,2,5,ir)},[22,0]],
+ Rome:[64,36,10,(c,R,w,h)=>{const st='#d9c6a0',sh='#b39f7a',dk='#4a3a2c',top=x=>x<38?2:12; // Colosseum met de afgebrokkelde buitenring
+   for(let x=2;x<w-2;x++)R(x,top(x)+(x<4||x>w-5?2:0),1,h,x<6||x>w-7||(x>35&&x<38)?sh:st);
+   R(2,11,36,1,sh);R(2,20,60,1,sh);R(2,29,60,1,sh);
+   for(let x=5;x<w-6;x+=6)[5,14,23].forEach(y=>{if(y>top(x+2)+1)R(x,y,3,5,dk)})}],
+ Londen:[76,48,11,(c,R,w)=>{const st='#b8a98c',sh='#93856c',bl='#6fb4dc',dk='#3a3040'; // Tower Bridge
+   for(let x=0;x<20;x++){const y=36-24*Math.pow(x/19,1.8)|0;[x,w-1-x].forEach(q=>{if(x%4===0)R(q,y,1,36-y,'#a9d6ee');R(q,y,1,2,bl)})}
+   R(0,36,w,3,bl);R(0,39,w,1,'#4a86ac');R(30,16,16,2,bl);R(30,19,16,1,bl);                               // rijbaan + loopbrug
+   [20,46].forEach(x=>{R(x-2,40,14,8,sh);R(x,10,10,30,st);R(x+7,10,3,30,sh);R(x,7,2,3,st);R(x+8,7,2,3,st);
+     R(x+2,4,6,6,st);R(x+3,2,4,2,'#5a6470');R(x+4,0,2,2,'#5a6470');R(x+4,14,2,5,dk);R(x+4,24,2,5,dk);R(x+3,31,4,5,dk)})}],
+ Brussel:[56,62,8,(c,R)=>{const P=[[28,8],[9,21],[47,21],[28,31],[9,41],[47,41],[28,53]];c.strokeStyle='#8e96a8';c.lineWidth=2.4;c.beginPath(); // Atomium
+   [[0,1],[0,2],[1,4],[2,5],[4,6],[5,6],[0,6],[1,3],[2,3],[4,3],[5,3]].forEach(([a,b])=>{c.moveTo(P[a][0],P[a][1]);c.lineTo(P[b][0],P[b][1])});
+   c.moveTo(9,41);c.lineTo(5,62);c.moveTo(47,41);c.lineTo(51,62);c.moveTo(28,53);c.lineTo(28,62);c.stroke();
+   P.forEach(([x,y])=>{c.fillStyle='#9aa4b8';c.beginPath();c.arc(x,y,6.5,0,7);c.fill();c.fillStyle='#d3dbea';c.beginPath();c.arc(x-1,y-1,4.8,0,7);c.fill();R(x-3,y-3,2,2,'#fff')})}],
+ Berlijn:[64,44,9,(c,R)=>{const st='#d8c9a0',sh='#b3a37c',q='#4f8f7a';R(2,40,60,4,sh); // Brandenburger Tor
+   for(let i=0;i<6;i++){R(5+i*10,18,4,22,st);R(8+i*10,18,1,22,sh)}
+   R(3,13,58,5,st);R(3,17,58,1,sh);R(18,9,28,4,st);R(27,5,10,4,q);R(25,3,3,4,q);R(36,3,3,4,q);R(31,1,2,4,q)}],
+ Athene:[64,46,10,(c,R)=>{const m='#f0ead8',poly=(col,...p)=>{c.fillStyle=col;c.beginPath();p.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.fill()}; // Akropolis
+   poly('#9a8468',[0,46],[6,30],[14,24],[50,24],[58,30],[64,46]);poly('#7d6a52',[40,46],[50,24],[58,30],[64,46]);
+   R(17,11,30,11,'#6a5a48');for(let i=0;i<8;i++)R(17+i*4,11,2,11,m);R(16,22,32,2,m);R(16,9,32,2,m);poly(m,[16,9],[32,3],[48,9])}],
+ Moskou:[52,64,7.5,(c,R)=>{const br='#b5483a',bd='#8c3028'; // Basiliuskathedraal
+   const ui=(x,y,r,a,b)=>{for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(dx*dx+dy*dy<=r*r+1)R(x+dx,y+dy,1,1,((dx+dy+16)>>1)&1?a:b);R(x-1,y-r-2,3,2,a);R(x,y-r-4,1,2,'#ffd23e')};
+   R(6,44,40,20,br);R(40,44,6,20,bd);[10,18,26,34].forEach(x=>R(x,51,3,7,'#3a2030'));
+   R(21,24,10,20,br);R(28,24,3,20,bd);c.fillStyle='#c9583e';c.beginPath();c.moveTo(20,24);c.lineTo(26,7);c.lineTo(32,24);c.fill();ui(26,5,2,'#ffd23e','#ffd23e');
+   [[9,34,'#2f7fe0','#fff'],[17,28,'#3f9a4a','#f2c230'],[35,28,'#d83a3a','#fff'],[43,34,'#f08a24','#2f8f5a']].forEach(([x,t,a,b])=>{R(x-3,t,6,44-t,br);R(x+1,t,2,44-t,bd);ui(x,t-4,4,a,b)})}],
+ Wenen:[56,58,8,(c,R)=>{const cx=28,cy=26,r=23;c.lineWidth=2.2;c.strokeStyle='#8a8296';c.beginPath();c.moveTo(cx,cy);c.lineTo(12,58);c.moveTo(cx,cy);c.lineTo(44,58);c.stroke(); // Reuzenrad
+   c.strokeStyle='#c9c0de';c.beginPath();c.arc(cx,cy,r,0,7);for(let k=0;k<4;k++){const a=k*Math.PI/4;c.moveTo(cx-Math.cos(a)*r,cy-Math.sin(a)*r);c.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)}c.stroke();
+   for(let k=0;k<12;k++){const a=k*Math.PI/6+.26;R(Math.round(cx+Math.cos(a)*r)-2,Math.round(cy+Math.sin(a)*r)-1,4,4,'#d83a3a')}R(cx-2,cy-2,4,4,'#ffd23e')}]
+};
+function makeLandmark([w,h,uw,draw,beacon]){
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const c=cv.getContext('2d');
+  draw(c,(x,y,bw,bh,col)=>{c.fillStyle=col;c.fillRect(x,y,bw,bh)},w,h);
+  const d=c.getImageData(0,0,w,h).data,px=new Uint32Array(w*h);
+  for(let i=0;i<w*h;i++)px[i]=d[i*4+3]>128?rgb(d[i*4],d[i*4+1],d[i*4+2]):0;
+  return{w,h,px,beacon:beacon||null,uw};
+}
+let sprCap=[],sprTown=[],lmSpr={};
+const heliSpr=document.createElement('canvas');
+const tint=(col,f)=>'rgb('+hex(col).map(v=>Math.round(v+((f<0?0:255)-v)*Math.abs(f))).join(',')+')'; // f<0 donkerder, f>0 lichter
+function paintHeli(){ // heli van achteren gezien, 64x48, in de gekozen kleur
+  const col=heliCol,li=tint(col,.3),hl=tint(col,.48),dk=tint(col,-.28);
+  heliSpr.width=64;heliSpr.height=48;const c=heliSpr.getContext('2d');const R=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
+  R(15,41,12,2,'#2b2438');R(37,41,12,2,'#2b2438');R(19,35,2,6,'#3b3350');R(43,35,2,6,'#3b3350'); // skids
+  const hw=[6,9,11,12,13,14,14,14,14,14,14,13,13,12,11,10,8,6];
+  hw.forEach((w,i)=>{const y=17+i;R(32-w,y,w*2,1,i<4?li:i<12?col:dk);R(32-w,y,2,1,hl);R(32+w-3,y,3,1,tint(col,-.45))});
+  R(24,17,16,1,'#9fe4ff');R(22,18,20,3,'#7fd0f4');R(23,19,6,1,'#e8fbff');           // glas bovenop
+  R(27,22,10,2,col===COLS[2][1]?'#24153f':'#ffd23e');                              // streep (donker op de gele heli)
+  R(30,27,4,12,tint(col,-.14));R(31,27,1,12,li);                                   // staartboom naar de kijker toe
+  R(22,38,20,2,dk);R(30,36,4,9,col);R(31,36,1,9,hl);                               // stabilo + staartvin
+  R(35,38,1,6,'#2b2438');                                                          // staartrotor
+  R(31,11,2,6,'#3b3350');                                                          // mast
+  const p=$('pPrev').getContext('2d');p.clearRect(0,0,64,48);p.drawImage(heliSpr,0,0);
+}
+function buildSprites(){
+  sprCap=[0,1,2].map(i=>makeCitySprite(true,i+1));sprTown=[0,1,2].map(i=>makeCitySprite(false,i+11));
+  lmSpr={};for(const k in LANDMARKS)lmSpr[k]=makeLandmark(LANDMARKS[k]);
+  paintHeli();
+}
+
+/* ================= Renderer: Voxel Space ================= */
+const scr=$('scr'),sctx=scr.getContext('2d');sctx.imageSmoothingEnabled=false;
+const img=sctx.createImageData(RW,RH),fb=new Uint32Array(img.data.buffer),zb=new Float32Array(RW*RH),ybuf=new Int32Array(RW),hzc=new Int32Array(RW);
+const FAR=440,FOG0=90,MIPZ=70,NEARB=40;
+const cam={x:0,y:0,h:10,phi:0,hz:78,roll:0};
+function fogMix(c,fi){const q=256-fi;return(255<<24|(((c>>16&255)*q+FOG[2]*fi)>>8)<<16|(((c>>8&255)*q+FOG[1]*fi)>>8)<<8|(((c&255)*q+FOG[0]*fi)>>8))>>>0}
+function renderWorld(time){
+  const phi=cam.phi,fx=Math.sin(phi),fy=-Math.cos(phi),rx=Math.cos(phi),ry=Math.sin(phi),camx=cam.x,camy=cam.y,camh=cam.h;
+  // lucht
+  const p0=Math.floor(phi/(2*Math.PI)*PW),cd=Math.floor(time*2.5);
+  for(let i=0;i<RW;i++){
+    const hz=hzc[i]=cam.hz+Math.round((i-RW/2)*cam.roll);
+    const px=((p0+i-RW/2)%PW+PW)%PW,cx=(px+cd)%PW;
+    for(let y=0,idx=i;y<RH;y++,idx+=RW){let py=y-hz+PHZ;if(py<0)py=0;else if(py>=PH)py=PH-1;const o=py*PW;fb[idx]=cloud[o+cx]||sky[o+px]}
+    ybuf[i]=RH;
+  }
+  zb.fill(1e9);
+  // terrein, van dichtbij naar ver
+  const tick=(time*14)|0;
+  let z=1.2,dz=.3;
+  while(z<FAR){
+    const far=z>MIPZ,near=z<NEARB,inv=K/z,sx=rx*2*z/RW,sy=ry*2*z/RW;
+    let px=camx+fx*z-rx*z+MG,py=camy+fy*z-ry*z+MG;
+    let f=(z-FOG0)/(FAR-FOG0);f=f<0?0:f;const fi=(Math.pow(f,.8)*256)|0;
+    for(let i=0;i<RW;i++,px+=sx,py+=sy){
+      const yb=ybuf[i];if(yb<=0)continue;
+      let h=0,hi=-1;const hx=px|0,hy=py|0;
+      if(px>=0&&py>=0&&hx<FW-1&&hy<FH-1){
+        hi=hy*FW+hx;
+        if(near){const u=px-hx,v=py-hy,a=hmap[hi],b=hmap[hi+1],c=hmap[hi+FW],d=hmap[hi+FW+1];h=a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+        else h=hmap[hi];
+      }
+      let y=((camh-h*HSC)*inv+hzc[i])|0;
+      if(y<yb){
+        if(y<0)y=0;
+        let c;
+        if(hi<0)c=0xff7c3016;
+        else if(far)c=cmap2[hi];
+        else{const mx=px*S|0,my=py*S|0;c=cmap[my*MW+mx];if(h<1&&((mx*5+my*11+tick*3)&127)<3&&(c>>16&255)>150)c=0xffffeebb} // glinstering op zee
+        if(fi>0)c=fogMix(c,fi);
+        for(let idx=y*RW+i,e=yb*RW+i;idx<e;idx+=RW){fb[idx]=c;zb[idx]=z}
+        ybuf[i]=y;
+      }
+    }
+    z+=dz;dz=z*.0115;if(dz<.3)dz=.3;
+  }
+  // stad-sprites, van ver naar dichtbij, per pixel getest tegen de dieptebuffer
+  const vis=[];
+  for(const ct of cities){const dx=ct.x-camx,dy=ct.y-camy,zz=dx*fx+dy*fy;if(zz<3||zz>FAR*.8)continue;const t=dx*rx+dy*ry;if(Math.abs(t)>zz+8)continue;vis.push([zz,t,ct])}
+  vis.sort((a,b)=>b[0]-a[0]);
+  const blinkOn=(time*2|0)&1;
+  for(const[zz,t,ct]of vis){
+    const sp=ct.spr||(ct.cap?sprCap:sprTown)[ct.seed%3],sc=sp.uw/sp.w*K/zz,dw=sp.w*sc,dh=sp.h*sc;
+    const cxs=RW/2+t/zz*K,x0=Math.round(cxs-dw/2),x1=Math.round(cxs+dw/2);
+    const ci=clamp(cxs|0,0,RW-1),base=((camh-groundAt(ct.x,ct.y))*K/zz+hzc[ci])|0,y0=Math.round(base-dh);
+    let f=(zz-FOG0)/(FAR-FOG0);f=f<0?0:f;const fi=(Math.pow(f,.8)*256)|0,zt=zz-1.5;
+    for(let x=Math.max(0,x0);x<Math.min(RW,x1);x++){
+      const u=Math.min(sp.w-1,(x-x0)/sc|0);
+      for(let y=Math.max(0,y0);y<Math.min(RH,base);y++){
+        const v=Math.min(sp.h-1,(y-y0)/sc|0);let c=sp.px[v*sp.w+u];if(!c)continue;
+        const idx=y*RW+x;if(zb[idx]<zt)continue;
+        fb[idx]=fi?fogMix(c,fi):c;zb[idx]=zt;
+      }
+    }
+    if(sp.beacon&&blinkOn){const bx=Math.round(x0+sp.beacon[0]*sc),by=Math.round(y0+sp.beacon[1]*sc);
+      for(let y=by-1;y<=by+1;y++)for(let x=bx-1;x<=bx+1;x++)if(x>=0&&y>=0&&x<RW&&y<RH&&zb[y*RW+x]>=zt)fb[y*RW+x]=(x===bx||y===by)?0xff4040ff:fb[y*RW+x]}
+  }
+  sctx.putImageData(img,0,0);
+}
+
+/* ================= Heli + vliegmodel ================= */
+const CRUISE=42,TURBO=74,CAMD=12,CAMUP=2.6;
+const heli={x:0,y:0,phi:0,spd:0,yaw:0,agl:4.5,aglT:4.5,alt:6,rotor:0,trail:[]};
+const input={turn:0,thr:0,up:0,turbo:false};
+const keys={};
+function drawHeli(time){
+  const g=groundAt(heli.x,heli.y),cxs=RW/2,hzM=hzc[RW>>1];
+  const hy=hzM+(cam.h-heli.alt)*K/CAMD,sy=hzM+(cam.h-g)*K/CAMD;
+  // schaduw op de grond
+  if(sy<RH+10){const k=clamp(1-(heli.alt-g)/22,.35,1);sctx.fillStyle='rgba(10,5,30,.42)';sctx.beginPath();sctx.ellipse(cxs,sy,22*k,5*k,0,0,Math.PI*2);sctx.fill()}
+  sctx.save();sctx.translate(cxs,Math.round(hy));sctx.rotate(heli.yaw*.32);
+  const bob=Math.sin(time*3)*1.2,pit=heli.spd/TURBO*3;
+  sctx.drawImage(heliSpr,-32,-30+bob-pit);
+  // rotor: schijf + twee bladen
+  const ry=-19+bob-pit;sctx.fillStyle='rgba(230,235,255,.16)';sctx.beginPath();sctx.ellipse(0,ry,31,6,0,0,Math.PI*2);sctx.fill();
+  sctx.strokeStyle='rgba(30,24,48,.9)';sctx.lineWidth=1.6;sctx.beginPath();
+  for(let b=0;b<2;b++){const a=heli.rotor+b*Math.PI/2,dx=Math.cos(a)*31,dy=Math.sin(a)*6;sctx.moveTo(-dx,ry-dy);sctx.lineTo(dx,ry+dy)}
+  sctx.stroke();sctx.restore();
+}
+function flyHeli(dt,ctl){
+  const turnT=ctl.turn*1.55;heli.yaw+=(turnT-heli.yaw)*Math.min(1,dt*5);heli.phi+=heli.yaw*dt;
+  const vmax=ctl.turbo?TURBO:CRUISE;
+  if(ctl.thr>0)heli.spd+=(heli.spd<vmax?46:-30)*ctl.thr*dt;
+  else if(ctl.thr<0)heli.spd-=(heli.spd>0?95:30)*dt;
+  else heli.spd-=Math.sign(heli.spd)*Math.min(Math.abs(heli.spd),9*dt);
+  if(ctl.brake)heli.spd-=Math.sign(heli.spd)*Math.min(Math.abs(heli.spd),170*dt);
+  heli.spd=clamp(heli.spd,-14,TURBO);
+  heli.x=clamp(heli.x+Math.sin(heli.phi)*heli.spd*dt,2,W-2);heli.y=clamp(heli.y-Math.cos(heli.phi)*heli.spd*dt,2,H-2);
+  heli.aglT=clamp(heli.aglT+ctl.up*7*dt,2.6,16);
+  const tgt=ctl.land!=null?ctl.land:heli.aglT;heli.agl+=(tgt-heli.agl)*Math.min(1,dt*(ctl.land!=null?5:3));
+  // terrein volgen, met vooruitkijken zodat je nooit een berg in vliegt
+  let g=groundAt(heli.x,heli.y);const fx=Math.sin(heli.phi),fy=-Math.cos(heli.phi);
+  for(let k=1;k<=3;k++)g=Math.max(g,groundAt(heli.x+fx*heli.spd*.25*k,heli.y+fy*heli.spd*.25*k)-k*.3);
+  heli.alt+=(g+heli.agl-heli.alt)*Math.min(1,dt*4.5);heli.alt=Math.max(heli.alt,groundAt(heli.x,heli.y)+.5);
+  heli.rotor+=dt*27;
+  // camera erachter
+  cam.phi=heli.phi;cam.x=heli.x-fx*CAMD;cam.y=heli.y-fy*CAMD;
+  const ch=Math.max(heli.alt+CAMUP,groundAt(cam.x,cam.y)+1.6,groundAt(heli.x-fx*CAMD*.5,heli.y-fy*CAMD*.5)+1.2);cam.h+=(ch-cam.h)*Math.min(1,dt*8);
+  cam.roll=heli.yaw*.085;cam.hz=74+Math.round((heli.agl-4.5)*1.2);
+}
+
+/* ================= Geluid (alles gesynthetiseerd) ================= */
+let AC=null,master=null,rotG=null,rotF=null,rotL=null,musG=null,muted=store.get('mute',false),musStep=0,musNext=0,musicOn=false;
+function audioInit(){
+  if(AC){if(AC.state!=='running')AC.resume();return}
+  try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return}
+  master=AC.createGain();master.gain.value=muted?0:.55;master.connect(AC.destination);
+  const nb=AC.createBuffer(1,AC.sampleRate,AC.sampleRate),ch=nb.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;
+  const src=AC.createBufferSource();src.buffer=nb;src.loop=true;rotF=AC.createBiquadFilter();rotF.type='lowpass';rotF.frequency.value=260;
+  rotG=AC.createGain();rotG.gain.value=0;const am=AC.createGain();am.gain.value=.5;
+  rotL=AC.createOscillator();rotL.type='sawtooth';rotL.frequency.value=13;const lg=AC.createGain();lg.gain.value=.5;rotL.connect(lg);lg.connect(am.gain);
+  src.connect(rotF);rotF.connect(am);am.connect(rotG);rotG.connect(master);src.start();rotL.start();
+  musG=AC.createGain();musG.gain.value=.16;musG.connect(master);
+}
+function tone(f,t,d,type,vol,dest){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(vol||.2,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(dest||master);o.start(t);o.stop(t+d+.02)}
+function sfx(k){if(!AC)return;const t=AC.currentTime;
+  if(k==='good')[523,659,784,1047,1319].forEach((f,i)=>tone(f,t+i*.07,.16,'square',.2));
+  else if(k==='bad'){tone(196,t,.22,'sawtooth',.22);tone(147,t+.18,.35,'sawtooth',.22)}
+  else if(k==='hint'){tone(880,t,.1,'triangle',.25);tone(880,t+.16,.1,'triangle',.25)}
+  else if(k==='land'){const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(620,t);o.frequency.exponentialRampToValueAtTime(180,t+.5);g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.connect(g);g.connect(master);o.start(t);o.stop(t+.55)}
+  else if(k==='home')[392,523,659,523,784].forEach((f,i)=>tone(f,t+i*.11,.22,'triangle',.28));
+  else if(k==='over')[392,330,262,196].forEach((f,i)=>tone(f,t+i*.2,.3,'square',.2));
+  else tone(k==='blip2'?990:660,t,.06,'square',.15);
+}
+// chiptune-loop: bas + arpeggio over vier akkoorden (Am F C G)
+const CH=[[110,[440,523,659]],[87.3,[349,440,523]],[130.8,[523,659,784]],[98,[392,494,587]]],ARP=[0,1,2,1,0,2,1,2];
+// achtergrondmuziek uit bestand; lukt laden/afspelen niet, dan neemt de chiptune het stil over
+const bgm=$('bgm');let bgmOK=true,bgmDead=false,bgmT0=0;bgm.volume=.2;
+function bgmFail(){bgmOK=false;try{bgm.pause()}catch(e){}}
+const bgmDie=()=>{bgmDead=true;bgmFail()};bgm.addEventListener('error',bgmDie);bgm.lastElementChild.addEventListener('error',bgmDie); // laatste <source> faalt = geen bruikbare bron
+function bgmPlay(){if(!bgmOK)return;bgmT0=performance.now();try{const p=bgm.play();if(p)p.catch(e=>{if(e&&e.name!=='AbortError')bgmFail()})}catch(e){bgmFail()}}
+function setMusic(on){musicOn=on;if(on){bgmOK=!bgmDead;if(bgmOK){try{bgm.currentTime=0}catch(e){}bgmPlay()}}else bgm.pause()}
+function music(){
+  if(bgmOK&&musicOn&&bgm.readyState<2&&performance.now()-bgmT0>2000)bgmFail(); // laadt niet: terugvallen
+  if(!AC||!musicOn||bgmOK)return;const sl=60/128/4;if(musNext<AC.currentTime)musNext=AC.currentTime+.05;
+  while(musNext<AC.currentTime+.2){
+    const s=musStep%64,[bass,arp]=CH[s>>4],t=musNext;
+    if(s%4===0||s%16===10)tone(bass*(s%8===4?2:1),t,sl*1.8,'square',.5,musG);
+    if(s%2===0)tone(arp[ARP[(s>>1)%8]]*(s%32>=24?2:1),t,sl*1.4,'triangle',.5,musG);
+    if(s%4===2)tone(6000,t,.03,'square',.08,musG);
+    musStep++;musNext+=sl;
+  }
+}
+function setMute(m){muted=m;store.set('mute',m);if(master)master.gain.value=m?0:.55;bgm.muted=m;$('mute').textContent=$('mSound').textContent=m?'GELUID: UIT':'GELUID: AAN'}
+
+/* ================= Kaart (schoolkaart-stijl) ================= */
+const mapCv=$('map'),mctx=mapCv.getContext('2d');let mapBase=null,mapKey='',mapBig=false,mapDpr=1;
+const VIEWU=310; // kaarteenheden in beeld over de breedte van de minikaart
+function drawSchoolMap(c,sc,names){ // schoolatlas-stijl; wordt één keer per kaart/niveau op hoge resolutie getekend
+  c.save();c.scale(sc,sc);c.lineJoin=c.lineCap='round';
+  const g=c.createLinearGradient(0,0,W*.4,H);g.addColorStop(0,'#d9edf7');g.addColorStop(1,'#b4d6ea');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=.5;c.beginPath();for(let x=50;x<W;x+=50){c.moveTo(x,0);c.lineTo(x,H)}for(let y=50;y<H;y+=50){c.moveTo(0,y);c.lineTo(W,y)}c.stroke(); // graadnet
+  const others=GEO.other.map(([a3,d])=>[a3,new Path2D(d)]),all=new Path2D();others.forEach(o=>all.addPath(o[1]));for(const k in ctyP)all.addPath(ctyP[k]);
+  c.save();c.shadowColor='rgba(30,80,120,.5)';c.shadowBlur=5*sc;c.fillStyle='#efece4';c.fill(all);c.restore();                 // zachte kustschaduw
+  others.forEach(([a3,p])=>{c.fillStyle=CFG.ocol[a3]||'#f1eee6';c.fill(p)});
+  for(const k in GEO.quiz){c.fillStyle=CFG.col[k];c.fill(ctyP[k])}
+  c.strokeStyle='#5f5b52';c.lineWidth=.55;c.stroke(all);                                                                        // strakke grenzen
+  c.fillStyle='#bfe0f2';c.strokeStyle='#7fb2d2';c.lineWidth=.3;GEO.lakes.forEach(d=>{const p=new Path2D(d);c.fill(p);c.stroke(p)});
+  CFG.vlak.forEach(k=>{c.fillStyle='rgba(255,138,0,.3)';c.fill(regP[k])});
+  c.save();c.strokeStyle='#5f5b52';c.setLineDash([3,2]);c.lineWidth=.8;GEO.rborders.forEach(d=>c.stroke(new Path2D(d)));CFG.vlak.forEach(k=>c.stroke(regP[k]));c.restore();
+  for(const k in rivP){c.strokeStyle='#fff';c.lineWidth=2.6;rivP[k].forEach(p=>c.stroke(p));c.strokeStyle='#1c6fb5';c.lineWidth=1.5;rivP[k].forEach(p=>c.stroke(p))}
+  c.fillStyle='#9a622c';c.strokeStyle='#4a2c10';c.lineWidth=.5;
+  for(const k in GEO.mts)interp(GEO.mts[k],8.5).forEach(([x,y],i)=>{const o=i%2?2.4:-2.4;c.beginPath();c.moveTo(x-4.4,y+3+o);c.lineTo(x,y-4.6+o);c.lineTo(x+4.4,y+3+o);c.closePath();c.fill();c.stroke();
+    c.fillStyle='#fff';c.beginPath();c.moveTo(x-1.5,y-2+o);c.lineTo(x,y-4.6+o);c.lineTo(x+1.5,y-2+o);c.fill();c.fillStyle='#9a622c'});
+  for(const k in GEO.cities){const[x,y]=GEO.cities[k],it=ITEMS.find(i=>i.kind==='stad'&&i.code===k),cap=!it||it.cat==='stad';c.strokeStyle='#3a0d0a';c.lineWidth=.6;
+    if(cap){c.fillStyle='#fff';c.beginPath();c.rect(x-3.6,y-3.6,7.2,7.2);c.fill();c.stroke();c.fillStyle='#c4261d';c.fillRect(x-1.9,y-1.9,3.8,3.8)}   // hoofdstad: vierkant
+    else{c.fillStyle='#c4261d';c.beginPath();c.arc(x,y,2.7,0,7);c.fill();c.stroke()}}                                                               // stad: stip
+  {const[x,y]=DOM[SETK].p;c.fillStyle='#7a2d8c';c.strokeStyle='#fff';c.lineWidth=1;c.beginPath();c.moveTo(x-2.2,y+3.5);c.lineTo(x-2.2,y-2);c.lineTo(x,y-6.5);c.lineTo(x+2.2,y-2);c.lineTo(x+2.2,y+3.5);c.closePath();c.stroke();c.fill()} // Domtoren (thuis)
+  if(names){c.fillStyle='#1b2a33';c.textAlign='center';c.font='700 10px system-ui,sans-serif';c.strokeStyle='rgba(255,255,255,.85)';c.lineWidth=2.4;
+    for(const k in GEO.labels){const[x,y]=GEO.labels[k],n=BY['land'+k].name;c.strokeText(n,x,y+3);c.fillText(n,x,y+3)}}
+  c.strokeStyle='#24153f';c.lineWidth=2;c.strokeRect(1,1,W-2,H-2);
+  c.restore();
+}
+function layoutMap(){
+  const st=$('stage').getBoundingClientRect(),dpr=mapDpr=Math.min(2,window.devicePixelRatio||1);
+  let w,h;if(mapBig){h=st.height*.84;w=h*W/H;if(w>st.width*.9){w=st.width*.9;h=w*H/W}}else if(RADAR){w=h=Math.min(st.width*.3,st.height*.47)}else{w=st.width*.3;h=st.height*.42}
+  mapCv.style.width=w+'px';mapCv.style.height=h+'px';mapCv.width=Math.round(w*dpr);mapCv.height=Math.round(h*dpr);
+  // basiskaart: scherp genoeg voor de ingezoomde minikaart, begrensd op ~9 megapixel
+  const sb=Math.round(clamp(st.width*.3*dpr/VIEWU,1,Math.sqrt(9e6/(W*H)))*10)/10,names=!!(game&&game.niveau.namen),key=SETK+'|'+names+'|'+sb;
+  if(key!==mapKey){mapKey=key;mapBase=document.createElement('canvas');mapBase.width=Math.round(W*sb);mapBase.height=Math.round(H*sb);drawSchoolMap(mapBase.getContext('2d'),sb,names)}
+  $('mapwrap').classList.toggle('big',mapBig);$('mapwrap').classList.toggle('radar',RADAR&&!mapBig);$('maphint').hidden=mapBig||isTouch;
+}
+function drawHint(c,it,u){ // doel knippert op de kaart; u = 1 schermpixel in kaarteenheden
+  c.fillStyle='rgba(255,60,0,.55)';c.strokeStyle='#ff3c00';c.lineWidth=Math.max(5,4*u);c.lineCap=c.lineJoin='round';
+  if(it.kind==='land'){c.fill(ctyP[it.code]);c.lineWidth=2;c.stroke(ctyP[it.code]);if(CFG.klein.includes(it.code)){const l=GEO.labels[it.code];c.beginPath();c.arc(l[0],l[1],16,0,7);c.stroke()}}
+  else if(it.kind==='gebied'){c.fill(regP[it.code]);c.lineWidth=2;c.stroke(regP[it.code])}
+  else if(it.kind==='stad'){const p=GEO.cities[it.code];c.lineWidth=Math.max(3,3*u);c.beginPath();c.arc(p[0],p[1],Math.max(12,9*u),0,7);c.stroke()}
+  else if(it.kind==='river')rivP[it.code].forEach(p=>c.stroke(p));
+  else if(it.kind==='berg'){c.lineWidth=12;c.globalAlpha=.6;c.beginPath();GEO.mts[it.code].forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.globalAlpha=1}
+  else if(it.kind==='sea'){c.lineWidth=Math.max(3,3*u);GEO.seas[it.code].slice(0,3).forEach(p=>{c.beginPath();c.arc(p[0],p[1],Math.max(14,9*u),0,7);c.stroke()})}
+}
+// Radareffect over de minikaart: gedimde kaart met radartint, sweep met nagloei (conic-gradient, geen per-pixel werk),
+// ringen zonder afstandslabels, kruisdraden, scanlines en N op de rand.
+let scanPat=null,scanD=0;
+function radarFx(c,cw,ch,d,time){
+  const cx=cw/2,cy=ch/2,R=cw/2,a=(time*Math.PI*2/2.8)%(Math.PI*2);
+  c.save();c.setTransform(1,0,0,1,0,0);
+  if(c.createConicGradient){
+    let g=c.createConicGradient(a,cx,cy); // 0 = vlak vóór de straal (langst geleden geraakt), 1 = net geraakt
+    g.addColorStop(0,'rgba(3,44,26,.56)');g.addColorStop(.25,'rgba(3,44,26,.56)');g.addColorStop(.72,'rgba(3,44,26,.3)');g.addColorStop(1,'rgba(3,44,26,0)');
+    c.fillStyle=g;c.fillRect(0,0,cw,ch);
+    g=c.createConicGradient(a,cx,cy);g.addColorStop(0,'rgba(60,255,130,0)');g.addColorStop(.9,'rgba(60,255,130,0)');g.addColorStop(1,'rgba(60,255,130,.2)');
+    c.globalCompositeOperation='lighter';c.fillStyle=g;c.fillRect(0,0,cw,ch);c.globalCompositeOperation='source-over';
+  }else{c.fillStyle='rgba(3,44,26,.36)';c.fillRect(0,0,cw,ch)}
+  c.strokeStyle='rgba(200,255,220,.95)';c.lineWidth=1.6*d;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);c.stroke();
+  c.strokeStyle='rgba(120,255,175,.6)';c.lineWidth=d;c.beginPath();
+  for(let k=1;k<=3;k++){const r=R*k/3-(k===3?d:0);c.moveTo(cx+r,cy);c.arc(cx,cy,r,0,Math.PI*2)}
+  c.moveTo(0,cy);c.lineTo(cw,cy);c.moveTo(cx,0);c.lineTo(cx,ch);
+  for(let k=0;k<36;k++){const t=k*Math.PI/18,r0=R*(k%3?.965:.93);c.moveTo(cx+Math.cos(t)*r0,cy+Math.sin(t)*r0);c.lineTo(cx+Math.cos(t)*R,cy+Math.sin(t)*R)}
+  c.stroke();
+  if(!scanPat||scanD!==d){scanD=d;const p=document.createElement('canvas');p.width=1;p.height=Math.round(3*d);const q=p.getContext('2d');q.fillStyle='rgba(0,20,10,.2)';q.fillRect(0,0,1,Math.max(1,Math.round(d)));scanPat=c.createPattern(p,'repeat')}
+  c.fillStyle=scanPat;c.fillRect(0,0,cw,ch);
+  const v=c.createRadialGradient(cx,cy,R*.62,cx,cy,R);v.addColorStop(0,'rgba(0,16,10,0)');v.addColorStop(1,'rgba(0,16,10,.5)');c.fillStyle=v;c.fillRect(0,0,cw,ch);
+  const f=Math.round(11*d);c.fillStyle='rgba(4,20,14,.9)';c.beginPath();c.arc(cx,f*1.05,f*.85,0,7);c.fill();
+  c.fillStyle='#ffd23e';c.font='700 '+f+'px ui-monospace,Menlo,monospace';c.textAlign='center';c.textBaseline='middle';c.fillText('N',cx,f*1.1);
+  c.restore();
+}
+function drawMap(time){
+  if(!mapBase)return;const c=mctx,cw=mapCv.width,ch=mapCv.height,d=mapDpr;
+  // minikaart: uitsnede rond de heli (heli in het midden, noord boven); grote kaart: alles
+  const s=mapBig?cw/W:cw/VIEWU,ox=mapBig?0:cw/2-heli.x*s,oy=mapBig?0:ch/2-heli.y*s,u=d/s;
+  c.setTransform(1,0,0,1,0,0);
+  if(!mapBig){c.fillStyle='#7ea9c4';c.fillRect(0,0,cw,ch);c.strokeStyle='rgba(255,255,255,.25)';c.lineWidth=d;c.beginPath();   // buiten de kaart: leeg, graadnet loopt door
+    for(let x=((ox%(50*s))+50*s)%(50*s);x<cw;x+=50*s){c.moveTo(x,0);c.lineTo(x,ch)}for(let y=((oy%(50*s))+50*s)%(50*s);y<ch;y+=50*s){c.moveTo(0,y);c.lineTo(cw,y)}c.stroke()}
+  c.setTransform(s,0,0,s,ox,oy);c.imageSmoothingQuality='high';c.drawImage(mapBase,0,0,W,H);
+  const radar=RADAR&&!mapBig;if(radar)radarFx(c,cw,ch,d,time); // hint, spoor en heli komen er daarna helder overheen
+  if(game&&game.hint&&(time*3|0)%2===0)drawHint(c,game.target,u);
+  const tr=heli.trail;if(tr.length>1){c.strokeStyle='rgba(176,20,60,.85)';c.lineWidth=1.6*u;c.setLineDash([4*u,3*u]);c.beginPath();tr.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.lineTo(heli.x,heli.y);c.stroke();c.setLineDash([])}
+  const k=(mapBig?8:9)*u;
+  c.translate(heli.x,heli.y);c.rotate(heli.phi);c.beginPath();c.moveTo(0,-k*1.3);c.lineTo(k*.8,k);c.lineTo(0,k*.5);c.lineTo(-k*.8,k);c.closePath();
+  c.fillStyle=heliCol;c.fill();c.lineWidth=k*.24;c.strokeStyle='#fff';c.stroke();c.lineWidth=k*.1;c.strokeStyle='#000';c.stroke();
+  if(radar)return;
+  // kompas
+  c.setTransform(d,0,0,d,0,0);const r=mapBig?15:11,kx=r+7,ky=r+7;
+  c.fillStyle='rgba(36,21,63,.88)';c.strokeStyle='#ffd23e';c.lineWidth=1.5;c.beginPath();c.arc(kx,ky,r,0,7);c.fill();c.stroke();
+  c.fillStyle='#ff2e88';c.beginPath();c.moveTo(kx,ky-r+2);c.lineTo(kx+r*.32,ky);c.lineTo(kx-r*.32,ky);c.fill();
+  c.fillStyle='#fff';c.beginPath();c.moveTo(kx,ky+r-2);c.lineTo(kx+r*.32,ky);c.lineTo(kx-r*.32,ky);c.fill();
+  c.fillStyle='#ffd23e';c.font='700 '+(r*.8)+'px ui-monospace,Menlo,monospace';c.textAlign='center';c.fillText('N',kx,ky+r*2+1);
+}
+function toggleMap(){mapBig=!mapBig;layoutMap();sfx('blip')}
+
+/* ================= Spel ================= */
+let state='load',game=null,modeK=store.get('mode','arcade'),scores=store.get('scores',{});
+const ARCADE_START=75,RUSTIG_N=10,particles=[];let flash=0,attractT=0;
+const scoreKey=()=>game.niveau.id+'|'+game.mode;
+function show(id){['load','title','pilot','menu','pause','over'].forEach(s=>$(s).hidden=s!==id);$('hud').hidden=!(state==='play'||state==='pause');$('touch').hidden=!(isTouch&&state==='play')}
+function banner(txt,sub,cls,dur){const b=$('banner');b.hidden=false;b.className='sh pop '+cls;b.innerHTML=txt+(sub?'<small>'+sub+'</small>':'');void b.offsetWidth;game.bannerT=dur}
+function startGame(niveau){
+  audioInit();setMusic(true);$('banner').hidden=true;
+  game={niveau,mode:modeK,time:ARCADE_START,score:0,good:0,streak:0,best:0,done:0,bag:[],prev:null,target:null,qT:0,hint:false,hintAt:20,dist:0,hard:[],land:null,bannerT:0,trailT:0,lowBeep:0};
+  heli.x=W*.46;heli.y=H*.56;heli.phi=0;heli.spd=0;heli.yaw=0;heli.agl=heli.aglT=4.5;heli.alt=groundAt(heli.x,heli.y)+4.5;heli.trail=[[heli.x,heli.y]];
+  cam.h=heli.alt+CAMUP;mapBig=false;state='play';show(null);layoutMap();
+  $('sTimeBox').firstChild.textContent=game.mode==='arcade'?'TIJD ':'OPDRACHT ';
+  nextMission();updateHud();
+}
+function nextMission(){
+  const pool=ITEMS.filter(i=>game.niveau.cats.includes(i.cat));
+  if(!game.bag.length){game.bag=shuffle(pool);if(game.bag.length>1&&game.bag[0]===game.prev)game.bag.push(game.bag.shift())}
+  for(let k=0;k<game.bag.length&&isHit(game.bag[0],heli.x,heli.y);k++)game.bag.push(game.bag.shift()); // niet beginnen bovenop het doel
+  const it=game.bag.shift();game.target=game.prev=it;game.qT=0;game.hint=false;game.wrongHere=false;game.domUsed=false;
+  const c=centerOf(it);game.dist=Math.hypot(c[0]-heli.x,c[1]-heli.y);game.hintAt=14+game.dist/CRUISE*1.6;
+  $('mWord').textContent=('VLIEG NAAR '+wordFor(it)).trim();$('mName').textContent=it.name.toUpperCase();
+}
+function pointsNow(){let p=Math.max(20,Math.round(100*(1-game.qT/(game.hintAt*2))));if(game.hint)p=Math.round(p/2);return p}
+function confetti(){const kl=['#7dff8a','#ffd23e','#ff7ad9','#8fe9ff','#fff'];for(let i=0;i<60;i++)particles.push({x:RW/2,y:RH*.55,vx:(Math.random()-.5)*260,vy:-60-Math.random()*200,c:kl[i%5],t:1.2+Math.random()*.6})}
+function judge(){
+  const it=game.target,dom=DOM[SETK],home=Math.hypot(dom.p[0]-heli.x,dom.p[1]-heli.y)<=dom.r,welkom='WELKOM THUIS'+(pilot?', '+pilot:'')+'!';
+  let thuis=''; // thuisbonus bij de Domtoren: hooguit één keer per opdracht
+  if(home&&!game.domUsed){game.domUsed=true;
+    if(game.mode==='arcade'){game.time=Math.min(99,game.time+DOM_SEC);thuis='THUISBONUS +'+DOM_SEC+' SEC'}else{game.score+=DOM_PTS;thuis='THUISBONUS +'+DOM_PTS+' PUNTEN'}}
+  if(isHit(it,heli.x,heli.y)){
+    const mult=Math.min(5,game.streak+1),p=pointsNow()*mult;game.score+=p;game.good++;game.done++;game.streak++;game.best=Math.max(game.best,game.streak);
+    let sub='+'+p+' PUNTEN'+(mult>1?' (x'+mult+')':'');
+    if(game.mode==='arcade'){const b=Math.round(10+game.dist/CRUISE*1.25);game.time=Math.min(99,game.time+b);sub+=' · +'+b+' SEC'}
+    banner(home?welkom:['GOED ZO!','TOP!','RAAK!','KLOPT!'][Math.random()*4|0],it.name.toUpperCase()+' · '+sub+(thuis?' · '+thuis:''),'good',home?2.2:1.5);sfx('good');flash=.5;
+    confetti();
+    game.land.next=true;
+  }else if(home){ // thuis geland maar niet het doel: geen fout, de opdracht blijft staan
+    banner(welkom,(thuis?thuis+' · ':'')+'ZOEK '+it.name.toUpperCase()+'!','info',2.4);sfx('home');if(thuis)confetti();
+  }else{
+    const got=identify(heli.x,heli.y,ITEMS);game.streak=0;game.wrongHere=true;if(!game.hard.includes(it))game.hard.push(it);
+    if(game.mode==='arcade')game.time=Math.max(0,game.time-5);
+    const wat=got&&got!==it?'DIT IS '+got.name.toUpperCase()+'.':onLand(heli.x,heli.y)?'DIT HOORT NIET BIJ DE TOETS.':'HIER LIGT HET NIET.';
+    banner(wat,'ZOEK '+it.name.toUpperCase()+'!','bad',2);sfx('bad');
+  }
+  updateHud();
+}
+function endGame(){
+  state='over';setMusic(false);$('banner').hidden=true;sfx('over');if(rotG)rotG.gain.value=0;
+  const key=scoreKey(),list=scores[key]||[],top=game.score>0&&(list.length<5||game.score>list[list.length-1].score);
+  const o=$('over');
+  const hard=game.hard.length?'<div class="lbl">DEZE WAREN LASTIG</div><ul>'+game.hard.slice(0,6).map(i=>'<li>'+i.name.toUpperCase()+'</li>').join('')+'</ul>':'<div class="tag">ALLES IN ÉÉN KEER GOED!</div>';
+  o.innerHTML='<div class="h sh">'+(game.mode==='arcade'?'TIJD IS OP!':'GELAND!')+'</div><div class="big sh">'+game.score+'</div><div class="tag">'+game.good+' GOED · LANGSTE REEKS '+game.best+'</div>'+hard+'<div id="oBody"></div>';
+  show('over');
+  const body=$('oBody');
+  const table=(me)=>{const l=scores[key]||[];body.innerHTML='<div class="lbl" style="margin-top:calc(var(--u)*3)">'+(me>=0?'NIEUWE TOPSCORE!':'TOPSCORES')+'</div>'+(l.length?'<table>'+l.map((s,i)=>'<tr><td'+(i===me?' class="me"':'')+'>'+(i+1)+'.</td><td'+(i===me?' class="me"':'')+'>'+s.naam+'</td><td'+(i===me?' class="me"':'')+'>'+s.score+'</td></tr>').join('')+'</table>':'<div class="tag">NOG GEEN SCORES</div>')+'<div class="row" style="margin-top:calc(var(--u)*4)"><button class="b go" id="oAgain">NOG EEN KEER</button><button class="b" id="oMenu">MENU</button></div>';
+    $('oAgain').onclick=()=>startGame(game.niveau);$('oMenu').onclick=openMenu;$('oAgain').focus()};
+  if(!top)return table(-1);
+  const e={naam:pilot||'PILOOT',score:game.score};list.push(e);list.sort((a,b)=>b.score-a.score);scores[key]=list.slice(0,5);store.set('scores',scores);table(scores[key].indexOf(e));
+}
+function updateHud(){
+  $('sScore').textContent=game.score;$('sStreak').textContent='x'+Math.min(5,game.streak+1);
+  if(game.mode==='arcade'){$('sTime').textContent=Math.ceil(game.time);$('sTimeBox').classList.toggle('low',game.time<=10)}
+  else{$('sTime').textContent=Math.min(RUSTIG_N,game.done+1)+'/'+RUSTIG_N;$('sTimeBox').classList.remove('low')}
+}
+function stepGame(dt,time){
+  const L=game.land;
+  const ctl={turn:L?0:input.turn,thr:L?0:input.thr,up:L?0:input.up,turbo:input.turbo,brake:!!L,land:L&&L.ph!=='up'?(onLand(heli.x,heli.y)?.25:.9):null};
+  flyHeli(dt,ctl);
+  if(L){L.t+=dt;
+    if(L.ph==='down'&&L.t>.75){L.ph='wait';L.t=0;judge()}
+    else if(L.ph==='wait'&&L.t>(L.next?1.2:1)){L.ph='up';L.t=0;
+      if(L.next){if(game.mode==='rustig'&&game.done>=RUSTIG_N){game.land=null;return endGame()}nextMission();updateHud()}}
+    else if(L.ph==='up'&&L.t>.35)game.land=null;
+  }else{
+    game.qT+=dt;
+    if(!game.hint&&game.qT>game.hintAt){game.hint=true;if(!game.hard.includes(game.target))game.hard.push(game.target);banner('HINT!',isTouch?'TIK OP DE KAART: HET DOEL KNIPPERT':'DRUK OP M: HET DOEL KNIPPERT OP DE KAART','info',2.6);sfx('hint')}
+    if(game.mode==='arcade'){game.time-=dt;
+      if(game.time<=10&&Math.ceil(game.time)!==game.lowBeep){game.lowBeep=Math.ceil(game.time);sfx('blip2')}
+      if(game.time<=0){game.time=0;updateHud();return endGame()}}
+  }
+  game.trailT+=dt;if(game.trailT>.35){game.trailT=0;heli.trail.push([heli.x,heli.y]);if(heli.trail.length>500)heli.trail.shift()}
+  if(game.bannerT>0){game.bannerT-=dt;if(game.bannerT<=0)$('banner').hidden=true}
+  $('gSpd').textContent=Math.round(Math.abs(heli.spd)*6);$('gAlt').textContent=Math.round(heli.agl*30);
+  if(game.mode==='arcade')$('sTime').textContent=Math.ceil(game.time),$('sTimeBox').classList.toggle('low',game.time<=10);
+}
+function tryLand(){if(state!=='play'||game.land)return;game.land={ph:'down',t:0,next:false};sfx('land')}
+function attract(dt,time){ // automatische vlucht achter titel/menu
+  attractT+=dt;const cx=W*.5-heli.x,cy=H*.5-heli.y,far=Math.hypot(cx,cy)>Math.min(W,H)*.36;
+  let turn=Math.sin(attractT*.23)*.35;
+  if(far){const want=Math.atan2(cx,-cy);let d=want-heli.phi;d=Math.atan2(Math.sin(d),Math.cos(d));turn=clamp(d,-.6,.6)}
+  heli.aglT=6;flyHeli(dt,{turn,thr:heli.spd<26?1:0,up:0,turbo:false});
+}
+
+/* ================= Menu ================= */
+function openPilot(){ // naam + kleur van de heli; onthouden in localStorage
+  state='pilot';setMusic(false);if(game){game=null}show('pilot');
+  const inp=$('pName'),row=$('pCols');inp.value=pilot;row.innerHTML='';
+  COLS.forEach(([n,col])=>{const b=document.createElement('button');b.className='sw';b.style.background=col;b.title=n;b.setAttribute('aria-label',n);b.setAttribute('aria-pressed',col===heliCol);
+    b.onclick=b.onfocus=()=>{if(heliCol===col)return;heliCol=col;store.set('kleur',col);paintHeli();row.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));sfx('blip')};row.appendChild(b)});
+  if(!isTouch){inp.focus();inp.select()}
+}
+function pilotDone(){pilot=cleanName($('pName').value);store.set('naam',pilot);$('pName').blur();sfx('blip');openMenu()}
+function openMenu(){
+  state='menu';setMusic(false);if(game){game=null}show('menu');
+  $('mPilot').textContent='PILOOT: '+(pilot||'?');$('mPilot').style.borderColor=heliCol;
+  const sets=$('mSets');sets.innerHTML='';
+  for(const k in SETS){const b=document.createElement('button');b.className='b';b.textContent=SETS[k].titel;b.setAttribute('aria-pressed',k===SETK);b.onclick=()=>{if(k===SETK)return;store.set('set',k);loadSet(k,openMenu)};sets.appendChild(b)}
+  const modes=$('mModes');modes.innerHTML='';
+  [['arcade','ARCADE (MET KLOK)'],['rustig','RUSTIG (GEEN KLOK)']].forEach(([k,n])=>{const b=document.createElement('button');b.className='b';b.textContent=n;b.setAttribute('aria-pressed',k===modeK);b.onclick=()=>{modeK=k;store.set('mode',k);openMenu()};modes.appendChild(b)});
+  const lv=$('levels');lv.innerHTML='';
+  CFG.niveaus.forEach((nv,i)=>{const l=scores[nv.id+'|'+modeK]||[];const b=document.createElement('button');b.className='b';
+    b.innerHTML='<span>'+(i+1)+'. '+nv.naam.toUpperCase()+'</span><small>'+(l.length?'TOP: '+l[0].naam+' '+l[0].score:'NOG GEEN SCORE')+'</small>';b.onclick=()=>startGame(nv);lv.appendChild(b)});
+  lv.firstChild.focus();
+}
+function loadSet(k,then){state='load';show('load');setTimeout(()=>{useSet(k);const t0=performance.now();buildWorld();window.__dbg.buildMs=performance.now()-t0;
+  heli.x=W*.3;heli.y=H*.62;heli.phi=1;heli.spd=20;heli.alt=groundAt(heli.x,heli.y)+6;heli.trail=[];cam.h=heli.alt+CAMUP;then()},40)}
+function pause(on){if(on&&state==='play'){state='pause';show('pause');$('pGo').focus();if(rotG)rotG.gain.value=0;bgm.pause()}else if(!on&&state==='pause'){state='play';show(null);last=performance.now();if(musicOn)bgmPlay()}}
+
+/* ================= Invoer ================= */
+const isTouch=matchMedia('(pointer:coarse)').matches;
+addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)&&state!=='menu'&&state!=='over'&&state!=='pilot')e.preventDefault();
+  if(e.repeat){return}
+  audioInit();keys[e.code]=true;
+  if(state==='title'&&(e.key===' '||e.key==='Enter')){e.preventDefault();sfx('blip');return openPilot()}
+  if(state==='pilot'){ // typen in het naamveld mag de besturing niet raken; pijltjes wisselen tussen naam, kleuren en VERDER
+    const inp=$('pName'),ok=$('pOk'),sw=[...document.querySelectorAll('#pCols button')],a=document.activeElement,j=sw.indexOf(a),cur=sw.find(b=>b.getAttribute('aria-pressed')==='true')||sw[0];
+    if(e.key==='Escape'||(e.key==='Enter'&&a!==ok)){e.preventDefault();return pilotDone()}
+    let t=null;
+    if(e.key==='ArrowDown')t=a===inp?cur:j>=0?ok:a===ok?null:inp;
+    else if(e.key==='ArrowUp')t=a===ok?cur:j>=0?inp:null;
+    else if(j>=0&&e.key==='ArrowRight')t=sw[(j+1)%sw.length];
+    else if(j>=0&&e.key==='ArrowLeft')t=sw[(j-1+sw.length)%sw.length];
+    if(t){e.preventDefault();t.focus()}
+    return}
+  if(state==='menu'||state==='over'){const bs=[...document.querySelectorAll('#'+state+' button')],i=bs.indexOf(document.activeElement);
+    if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();bs[(i+1)%bs.length].focus()}else if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();bs[(i-1+bs.length)%bs.length].focus()}
+    if(e.key==='Escape'&&state==='over')openMenu();return}
+  if(state==='play'){
+    if(e.code==='Space'){tryLand()}else if(e.code==='KeyM')toggleMap();else if(e.code==='KeyP')pause(true);else if(e.key==='Escape')openMenu();
+  }else if(state==='pause'){if(e.code==='KeyP'||e.key==='Escape')pause(false)}
+});
+addEventListener('keyup',e=>{keys[e.code]=false});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;pause(true)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(true)});
+function readInput(){
+  input.turn=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0)+stick.x;input.thr=(keys.ArrowUp?1:0)-(keys.ArrowDown?1:0)+stick.y;
+  input.turn=clamp(input.turn,-1,1);input.thr=clamp(input.thr,-1,1);
+  input.up=(keys.KeyW?1:0)-(keys.KeyS?1:0)+tb.up;input.turbo=!!(keys.ShiftLeft||keys.ShiftRight)||tb.turbo;
+}
+const stick={x:0,y:0},tb={up:0,turbo:false};
+(function touchUI(){
+  const st=$('stick'),kn=$('knob');let id=null;
+  const mv=e=>{const r=st.getBoundingClientRect();let x=(e.clientX-r.left)/r.width*2-1,y=(e.clientY-r.top)/r.height*2-1;const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}
+    stick.x=Math.abs(x)<.15?0:x;stick.y=Math.abs(y)<.2?0:-y;kn.style.transform='translate('+x*90+'%,'+y*90+'%)'};
+  st.addEventListener('pointerdown',e=>{audioInit();id=e.pointerId;st.setPointerCapture(id);mv(e)});
+  st.addEventListener('pointermove',e=>{if(e.pointerId===id)mv(e)});
+  const up=e=>{if(e.pointerId!==id)return;id=null;stick.x=stick.y=0;kn.style.transform=''};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);
+  const hold=(el,on,off)=>{el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();on()});['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,off))};
+  hold($('tTurbo'),()=>tb.turbo=true,()=>tb.turbo=false);hold($('tUp'),()=>tb.up=1,()=>tb.up=0);hold($('tDown'),()=>tb.up=-1,()=>tb.up=0);
+  $('tLand').addEventListener('pointerdown',e=>{e.preventDefault();tryLand()});
+  $('tPause').addEventListener('click',()=>pause(true));
+})();
+addEventListener('pointerdown',audioInit);
+$('mapwrap').onclick=toggleMap;
+$('mute').onclick=$('mSound').onclick=()=>{audioInit();setMute(!muted)};
+$('title').onclick=()=>{audioInit();sfx('blip');openPilot()};
+$('pOk').onclick=pilotDone;$('mPilot').onclick=openPilot;
+$('pGo').onclick=()=>pause(false);$('pMenu').onclick=openMenu;
+
+/* ================= Hoofdlus ================= */
+function resize(){const st=$('stage'),w=Math.min(innerWidth,innerHeight*16/9),h=w*9/16;st.style.width=w+'px';st.style.height=h+'px';st.style.setProperty('--u',h/216+'px');if(GEO)layoutMap();if(isTouch&&innerHeight>innerWidth)pause(true)}
+addEventListener('resize',resize);
+let last=0;const perf={ms:0,n:0};
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=clamp((now-last)/1000||0,0,.05),time=now/1000;last=now;
+  if(state==='load'||state==='pause')return;
+  if(state==='play'){readInput();stepGame(dt,time)}else attract(dt,time);
+  const t0=performance.now();
+  renderWorld(time);drawHeli(time);
+  if(particles.length){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.t-=dt;if(p.t<=0){particles.splice(i,1);continue}p.vy+=320*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;sctx.fillStyle=p.c;sctx.fillRect(p.x|0,p.y|0,3,2)}}
+  if(flash>0){sctx.fillStyle='rgba(255,255,255,'+flash+')';sctx.fillRect(0,0,RW,RH);flash-=dt*1.6}
+  if(state==='play')drawMap(time);
+  perf.ms+=performance.now()-t0;perf.n++;
+  if(AC&&rotG){const on=state==='play';rotG.gain.value=on?.5:.12;rotL.frequency.value=12+Math.abs(heli.spd)*.13;rotF.frequency.value=230+Math.abs(heli.spd)*5;music()}
+}
+/* debug-hook voor tests */
+window.__dbg={heli,get game(){return game},get state(){return state},get items(){return ITEMS},get dom(){return DOM[SETK]},get pilot(){return pilot},get heliCol(){return heliCol},get bgmOK(){return bgmOK},get musicOn(){return musicOn},isHit,identify,centerOf,wordFor,onLand,groundAt,
+  goto(x,y){heli.x=x;heli.y=y;heli.spd=0;heli.alt=groundAt(x,y)+heli.agl},land:tryLand,perf,
+  frameMs(){const v=perf.ms/Math.max(1,perf.n);perf.ms=perf.n=0;return v},buildMs:0};
+resize();setMute(muted);buildSky();buildSprites();
+loadSet(SETK,()=>{state='title';show('title');layoutMap()});
+requestAnimationFrame(frame);
+</script>
 </body>
 </html>
