@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TOPO CHOPPER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#07040f;overflow:hidden;overscroll-behavior:none}
+body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,Menlo,Consolas,monospace;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+#stage{position:relative;--u:4px;overflow:hidden;background:#000}
+#scr{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.layer{position:absolute;inset:0;pointer-events:none}
+[hidden]{display:none!important}
+.sh{text-shadow:calc(var(--u)*.6) calc(var(--u)*.6) 0 #000}
+/* HUD */
+#mission{position:absolute;left:calc(var(--u)*5);top:calc(var(--u)*5);background:rgba(16,8,40,.78);border:calc(var(--u)*.7) solid #ffd23e;padding:calc(var(--u)*3) calc(var(--u)*4);max-width:62%}
+#mission small{display:block;font-size:calc(var(--u)*4.2);color:#8fe9ff;line-height:1.5}
+#mission b{display:block;font-size:calc(var(--u)*8.5);color:#ffd23e;line-height:1.25;margin-top:calc(var(--u)*1)}
+#stats{position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*5);text-align:right;font-size:calc(var(--u)*4.4);line-height:1.7}
+#stats b{font-size:calc(var(--u)*7);color:#ffd23e}
+#stats .t b{color:#fff}
+#stats .t.low b{color:#ff4d6d;animation:blink .5s steps(2) infinite}
+#stats .r b{color:#ff7ad9}
+#gauge{position:absolute;left:calc(var(--u)*5);bottom:calc(var(--u)*5);font-size:calc(var(--u)*4);line-height:1.7;color:#8fe9ff}
+#gauge b{color:#fff;font-size:calc(var(--u)*6)}
+#banner{position:absolute;left:0;right:0;top:21%;text-align:center;font-size:calc(var(--u)*11);line-height:1.3}
+#banner small{display:block;font-size:calc(var(--u)*5);margin-top:calc(var(--u)*2);color:#fff}
+#banner.good{color:#7dff8a}#banner.bad{color:#ff5d6d;font-size:calc(var(--u)*8)}#banner.info{color:#ffd23e}
+#banner.pop{animation:pop .25s steps(4)}
+@keyframes pop{from{transform:scale(1.6)}to{transform:scale(1)}}
+@keyframes blink{50%{opacity:0}}
+#mapwrap{position:absolute;right:calc(var(--u)*6);bottom:calc(var(--u)*6);border:calc(var(--u)*1.2) solid #24153f;background:#7ea9c4;pointer-events:auto;cursor:pointer;line-height:0;box-shadow:0 0 0 calc(var(--u)*.7) #ffd23e,0 0 0 calc(var(--u)*1.5) #ff2e88,0 0 0 calc(var(--u)*2.2) #24153f,calc(var(--u)*3.4) calc(var(--u)*3.4) 0 calc(var(--u)*1) rgba(0,0,0,.45)}
+#mapwrap.big{right:auto;bottom:auto;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 calc(var(--u)*.7) #ffd23e,0 0 0 calc(var(--u)*1.5) #ff2e88,0 0 0 calc(var(--u)*2.2) #24153f,0 0 0 100vmax rgba(8,4,24,.6)}
+#mapwrap canvas{display:block}
+#mapwrap.radar,#mapwrap.radar canvas{border-radius:50%}#mapwrap.radar{background:#04140e}
+#maphint{position:absolute;left:0;right:0;top:calc(var(--u)*-8.5);text-align:center;font-size:calc(var(--u)*3.2);color:#ffd23e;line-height:1}
+#mute{position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*46);pointer-events:auto;font:inherit;font-size:calc(var(--u)*3.6);background:rgba(16,8,40,.7);color:#8fe9ff;border:calc(var(--u)*.5) solid #8fe9ff;padding:calc(var(--u)*1.6) calc(var(--u)*2.4);cursor:pointer}
+/* touch */
+#touch{pointer-events:none}
+#stick{position:absolute;left:calc(var(--u)*6);bottom:calc(var(--u)*22);width:calc(var(--u)*56);height:calc(var(--u)*56);border-radius:50%;border:calc(var(--u)*.8) solid rgba(255,255,255,.5);background:rgba(255,255,255,.08);pointer-events:auto}
+#knob{position:absolute;left:50%;top:50%;width:36%;height:36%;margin:-18% 0 0 -18%;border-radius:50%;background:rgba(255,210,62,.85)}
+.tb{position:absolute;pointer-events:auto;font:inherit;font-size:calc(var(--u)*4);color:#fff;background:rgba(16,8,40,.7);border:calc(var(--u)*.7) solid #fff;padding:calc(var(--u)*3);min-width:calc(var(--u)*24)}
+#tLand{left:calc(var(--u)*76);bottom:calc(var(--u)*24);border-color:#ffd23e;color:#ffd23e;font-size:calc(var(--u)*6);padding:calc(var(--u)*5)}
+#tTurbo{left:calc(var(--u)*76);bottom:calc(var(--u)*48)}
+#tPause{left:50%;top:calc(var(--u)*5);transform:translateX(-50%);min-width:0;padding:calc(var(--u)*2.4) calc(var(--u)*4)}
+#tUp{left:calc(var(--u)*124);bottom:calc(var(--u)*48)}#tDown{left:calc(var(--u)*124);bottom:calc(var(--u)*24)}
+/* schermen */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*5);pointer-events:auto;text-align:center}
+.dim{background:rgba(10,4,30,.62)}
+.logo{font-size:calc(var(--u)*22);line-height:1.05;letter-spacing:calc(var(--u)*1);color:#ffd23e;text-shadow:calc(var(--u)*1.2) calc(var(--u)*1.2) 0 #ff2e88,calc(var(--u)*2.4) calc(var(--u)*2.4) 0 #5a189a,calc(var(--u)*3.6) calc(var(--u)*3.6) 0 #000}
+.logo span{color:#8fe9ff}
+.tag{font-size:calc(var(--u)*4.4);color:#fff}
+.press{font-size:calc(var(--u)*6);color:#fff;animation:blink 1s steps(2) infinite}
+.h{font-size:calc(var(--u)*9);color:#ffd23e}
+.lbl{font-size:calc(var(--u)*3.8);color:#8fe9ff;margin-bottom:calc(var(--u)*2)}
+.row{display:flex;gap:calc(var(--u)*3);justify-content:center;flex-wrap:wrap}
+button.b{font:inherit;font-size:calc(var(--u)*4.4);color:#fff;background:#24153f;border:calc(var(--u)*.7) solid #6b4fb0;padding:calc(var(--u)*2.6) calc(var(--u)*4);cursor:pointer;line-height:1.3}
+button.b[aria-pressed="true"]{background:#ff2e88;border-color:#fff}
+button.b:focus-visible,button.b:hover{outline:calc(var(--u)*.8) solid #ffd23e}
+button.b.go{background:#ffd23e;color:#24153f;border-color:#fff}
+#levels{display:grid;gap:calc(var(--u)*2);width:78%}
+#levels button{display:flex;justify-content:space-between;gap:calc(var(--u)*4);text-align:left;align-items:center}
+#levels small{font-size:calc(var(--u)*3);color:#8fe9ff;text-align:right}
+.keys{font-size:calc(var(--u)*3);color:#cbbcf0;line-height:1.9}
+#over .big{font-size:calc(var(--u)*14);color:#ffd23e}
+#over ul{list-style:none;margin:0;padding:0;font-size:calc(var(--u)*3.6);line-height:1.8;color:#ff9db0}
+#over table{font-size:calc(var(--u)*4);border-spacing:calc(var(--u)*6) calc(var(--u)*1.2);margin:0 auto}
+#over td.me{color:#ffd23e}
+#ini{display:flex;gap:calc(var(--u)*3);justify-content:center}
+#ini .s{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*1)}
+#ini .s b{font-size:calc(var(--u)*12);width:calc(var(--u)*17);padding:calc(var(--u)*2) 0;border-bottom:calc(var(--u)*1) solid #6b4fb0;color:#fff}
+#ini .s.on b{border-color:#ffd23e;color:#ffd23e}
+#ini .s button{font:inherit;font-size:calc(var(--u)*4);background:none;border:0;color:#8fe9ff;cursor:pointer;padding:calc(var(--u)*1.5)}
+#load .bar{width:50%;height:calc(var(--u)*5);border:calc(var(--u)*.7) solid #fff}
+#load .bar i{display:block;height:100%;width:30%;background:#ff2e88;animation:ld 1s steps(8) infinite}
+#rotate{display:none;position:fixed;inset:0;z-index:9;background:#07040f;color:#ffd23e;align-items:center;justify-content:center;text-align:center;font-size:5vw;line-height:1.8;padding:8vw}
+@media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
+@keyframes ld{from{margin-left:0}to{margin-left:70%}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="scr" width="384" height="216"></canvas>
+  <div class="layer" id="hud" hidden>
+    <div id="mission" class="sh"><small id="mWord">VLIEG NAAR</small><b id="mName">…</b></div>
+    <div id="stats" class="sh">
+      <div>SCORE <b id="sScore">0</b></div>
+      <div class="t" id="sTimeBox">TIJD <b id="sTime">75</b></div>
+      <div class="r">REEKS <b id="sStreak">x1</b></div>
+    </div>
+    <button id="mute" title="Geluid aan/uit">GELUID AAN</button>
+    <div id="gauge" class="sh">KM/U <b id="gSpd">0</b><br>HOOGTE <b id="gAlt">0</b></div>
+    <div id="banner" class="sh" hidden></div>
+    <div id="mapwrap" title="Kaart groter/kleiner (M)"><canvas id="map"></canvas><div id="maphint" class="sh">M = KAART</div></div>
+  </div>
+  <div class="layer" id="touch" hidden>
+    <div id="stick"><div id="knob"></div></div>
+    <button class="tb" id="tLand">LAND</button><button class="tb" id="tTurbo">TURBO</button>
+    <button class="tb" id="tPause" aria-label="Pauze">II</button>
+    <button class="tb" id="tUp">▲</button><button class="tb" id="tDown">▼</button>
+  </div>
+  <div class="screen" id="load"><div class="tag">KAART WORDT GEBOUWD…</div><div class="bar"><i></i></div></div>
+  <div class="screen" id="title" hidden style="justify-content:flex-start;padding-top:6%">
+    <div class="logo sh">TOPO<br><span>CHOPPER</span></div>
+    <div class="tag sh">VLIEG. ZOEK. LAND. ALLEEN DE KAART HELPT JE.</div>
+    <div class="press sh" style="margin-top:auto;margin-bottom:8%">DRUK OP SPATIE OF TIK</div>
+  </div>
+  <div class="screen dim" id="menu" hidden>
+    <div class="h sh">KIES JE VLUCHT</div>
+    <div><div class="lbl">KAART</div><div class="row" id="mSets"></div></div>
+    <div><div class="lbl">STAND</div><div class="row" id="mModes"></div></div>
+    <div id="levels"></div>
+    <div class="row"><button class="b" id="mSound">GELUID: AAN</button></div>
+    <div class="keys">PIJLTJES = VLIEGEN · W/S = HOGER/LAGER · SHIFT = TURBO<br>SPATIE = LANDEN · M = KAART · P = PAUZE · ESC = MENU</div>
+  </div>
+  <div class="screen dim" id="pause" hidden><div class="h sh">PAUZE</div><div class="row"><button class="b go" id="pGo">VERDER</button><button class="b" id="pMenu">MENU</button></div></div>
+  <div class="screen dim" id="over" hidden></div>
+</div>
+<div id="rotate">DRAAI JE SCHERM<br>↻<br>TOPO CHOPPER SPEEL JE LIGGEND</div>
+<audio id="bgm" loop preload="auto"><source src="airwolf.ogg" type="audio/ogg"><source src="airwolf.m4a" type="audio/mp4"></audio>
+<script src="geo.js"></script>
+<script>
+'use strict';
+const RADAR=true; // minikaart als rond radarscherm; false = rechthoekige atlas-minikaart
+/* ================= Data: itemlijsten (overgenomen uit topo.html) ================= */
+const SETS={
+ eu:{geo:GEO_EU,titel:'EUROPA',
+  col:{A:'#b5cfa0',B:'#bfb2d6',C:'#f5cfa0',D:'#a9b1cf',E:'#f3cfd6',F:'#c9bfe0',G:'#e3b7c8',H:'#f5e17a',I:'#f4c28e',J:'#a8bca0',K:'#cfe0a6',L:'#b8b6dd',M:'#e2a86f',N:'#d2b6d8',O:'#9fc68f',P:'#f6c48f',Q:'#aab89a',R:'#f4df7c'},
+  ocol:{NLD:'#f0c070',UKR:'#d7d49a',BLR:'#f0e0a8',LTU:'#d6c3e3',LVA:'#f6d0a8',EST:'#c9d6ad',CZE:'#cdb6d9',SVK:'#f4dc8a',HUN:'#bcd3a8',ROU:'#f4d58e',MDA:'#e6c4d6',BGR:'#c5b8dd',SRB:'#efc9a0',HRV:'#f4e08e',SVN:'#c3d7a8',BIH:'#d7c3e2',MNE:'#f1cfa4',ALB:'#cfe2a8',MKD:'#e9c2cf',KOS:'#c3b9dd',LUX:'#e8bcd2',TUR:'#f2dca0',CYP:'#f2dca0',AND:'#e8bcd2',LIE:'#c3d7a8',MCO:'#f4c28e',SMR:'#f4c28e'},
+  klein:['I','M','G'],vlak:[],
+  raw:[
+['A','land','IJsland'],['B','land','Noorwegen'],['C','land','Zweden'],['D','land','Finland'],['E','land','Rusland'],['F','land','Polen'],['G','land','Denemarken'],['H','land','Duitsland'],['I','land','België'],['J','land','Verenigd Koninkrijk'],['K','land','Ierland'],['L','land','Frankrijk'],['M','land','Zwitserland'],['N','land','Oostenrijk'],['O','land','Portugal'],['P','land','Spanje'],['Q','land','Italië'],['R','land','Griekenland'],
+['1','stad','Oslo'],['2','stad','Stockholm'],['3','stad','Helsinki'],['4','stad','Moskou'],['5','stad','Warschau'],['6','stad','Kopenhagen'],['7','stad','Berlijn'],['8','stad','Brussel'],['9','stad','Londen'],['10','stad','Dublin'],['11','stad','Parijs'],['12','stad','Bern'],['13','stad','Wenen'],['14','stad','Lissabon'],['15','stad','Madrid'],['16','stad','Rome'],['17','stad','Athene'],
+['a','water','Atlantische Oceaan'],['b','water','Noordzee'],['c','water','Oostzee'],['d','water','Middellandse Zee'],['e','water','Zwarte Zee'],['f','water','Rijn'],['g','water','Donau'],['h','water','Rhône'],
+['i','berg','Pyreneeën'],['j','berg','Alpen'],['k','berg','Oeralgebergte'],['l','berg','Kaukasus']
+  ],
+  niveaus:[
+ {id:'eu_landen',naam:'Landen van Europa',cats:['land']},
+ {id:'eu_hoofdsteden',naam:'Hoofdsteden van Europa',cats:['stad'],namen:true},
+ {id:'eu_water',naam:'Wateren en gebergten',cats:['water','berg']},
+ {id:'eu_gemengd',naam:'Alles door elkaar',cats:['land','stad','water','berg']}
+  ]},
+ we:{geo:GEO_WE,titel:'WEST-EUROPA',
+  col:{A:'#f6dca4',B:'#c6d0ad',C:'#f2b56b',D:'#f5e07e',E:'#cfa97c',F:'#b8a08c',G:'#bcbfe2'},
+  ocol:{},
+  klein:['F','E','C'],vlak:['J'],
+  raw:[
+['A','land','Ierland'],['B','land','Verenigd Koninkrijk'],['C','land','Nederland'],['D','land','Duitsland'],['E','land','België'],['F','land','Luxemburg'],['G','land','Frankrijk'],
+['1','stad','Dublin'],['2','stad','Londen'],['3','stad','Brussel'],['4','stad','Luxemburg'],['5','stad','Berlijn'],['6','stad','Parijs'],
+['7','plaats','Glasgow'],['8','plaats','Liverpool'],['9','plaats','Antwerpen'],['10','plaats','Keulen'],['11','plaats','Hamburg'],['12','plaats','München'],['13','plaats','Bordeaux'],['14','plaats','Lyon'],['15','plaats','Marseille'],
+['a','water','Atlantische Oceaan'],['b','water','Het Kanaal'],['c','water','Noordzee'],['d','water','Oostzee'],['e','water','Middellandse Zee'],['f','water','Theems'],['g','water','Schelde'],['h','water','Maas'],['i','water','Rijn'],['j','water','Seine'],['k','water','Rhône'],
+['H','gebied','Schotland'],['I','gebied','Engeland'],['J','gebied','Ruhrgebied'],['K','gebied','Vlaanderen'],['L','gebied','Wallonië'],
+['l','berg','Ardennen'],['m','berg','Alpen'],['n','berg','Pyreneeën'],
+['NI','plus','Noord-Ierland'],['WA','plus','Wales'],['NM','plus','Normandië'],['BR','plus','Bretagne'],['CA','plus','Calais'],['SB','plus','Straatsburg'],['FF','plus','Frankfurt']
+  ],
+  niveaus:[
+ {id:'we_landen',naam:'Landen van West-Europa',cats:['land']},
+ {id:'we_steden',naam:'Hoofdsteden en steden',cats:['stad','plaats'],namen:true},
+ {id:'we_water',naam:'Wateren en gebergten',cats:['water','berg']},
+ {id:'we_gebieden',naam:'Gebieden',cats:['gebied'],namen:true},
+ {id:'we_gemengd',naam:'Alles door elkaar',cats:['land','stad','plaats','water','gebied','berg']},
+ {id:'we_plus',naam:'Plus TOPO',cats:['plus'],namen:true}
+  ]}
+};
+const LAGE_BERGEN={we:{l:.3}};           // Ardennen zijn heuvels, geen Alpen
+const store={get(k,d){try{const v=localStorage.getItem('chopper-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('chopper-'+k,JSON.stringify(v))}catch(e){}}};
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* ================= Actieve kaart + hit-logica (zonder DOM-SVG) ================= */
+let SETK=SETS[store.get('set','eu')]?store.get('set','eu'):'eu';
+let CFG,GEO,W,H,ITEMS,BY,ctyP,regP,landP,rivP,rivPts,mtPts;
+const hitCtx=document.createElement('canvas').getContext('2d');
+function parsePts(d){ // "Mx,yLx,y…" -> lijst van polylines
+  return d.split('M').filter(Boolean).map(s=>{const n=s.match(/-?\d+\.?\d*/g).map(Number);const p=[];for(let i=0;i+1<n.length;i+=2)p.push([n[i],n[i+1]]);return p});
+}
+function interp(pts,step){const out=[];for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const L=Math.hypot(b[0]-a[0],b[1]-a[1]);const n=Math.max(1,Math.round(L/step));for(let k=0;k<n;k++)out.push([a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n])}out.push(pts[pts.length-1]);return out}
+function useSet(k){
+  SETK=k;CFG=SETS[k];GEO=CFG.geo;W=GEO.W;H=GEO.H;
+  GEO.regions=GEO.regions||{};GEO.rlabels=GEO.rlabels||{};GEO.rborders=GEO.rborders||[];
+  const kindOf=(code,cat)=>{if(cat==='land')return'land';if(cat==='berg')return'berg';if(cat==='water')return GEO.rivers[code]?'river':'sea';if(GEO.cities[code])return'stad';if(GEO.regions[code])return'gebied';return cat};
+  ITEMS=CFG.raw.map(([code,cat,name])=>({code,cat,name,id:cat+code,kind:kindOf(code,cat)}));
+  BY={};ITEMS.forEach(i=>BY[i.id]=i);
+  ctyP={};for(const c in GEO.quiz)ctyP[c]=new Path2D(GEO.quiz[c]);
+  regP={};for(const c in GEO.regions)regP[c]=new Path2D(GEO.regions[c]);
+  landP=[...Object.values(ctyP),...GEO.other.map(o=>new Path2D(o[1]))];
+  rivP={};for(const c in GEO.rivers)rivP[c]=GEO.rivers[c].map(d=>new Path2D(d));
+  rivPts={};for(const c in GEO.rivers){rivPts[c]=[];GEO.rivers[c].forEach(d=>parsePts(d).forEach(pl=>{if(pl.length>1)rivPts[c].push(...interp(pl,3));else rivPts[c].push(...pl)}))}
+  mtPts={};for(const c in GEO.mts)mtPts[c]=interp(GEO.mts[c],3);
+}
+const TOL={stad:14,river:9,berg:16};
+const inPath=(p,x,y)=>hitCtx.isPointInPath(p,x,y);
+function onLand(x,y){return landP.some(p=>inPath(p,x,y))}
+function inCountry(x,y){for(const c in ctyP)if(inPath(ctyP[c],x,y))return c;return null}
+function dmin(pts,x,y){let m=1e9;for(const p of pts){const d=Math.hypot(p[0]-x,p[1]-y);if(d<m)m=d}return m}
+function distTo(it,x,y){
+  if(it.kind==='stad')return Math.hypot(GEO.cities[it.code][0]-x,GEO.cities[it.code][1]-y);
+  if(it.kind==='river')return dmin(rivPts[it.code],x,y);
+  if(it.kind==='berg')return dmin(mtPts[it.code],x,y);
+  if(it.kind==='sea')return dmin(GEO.seas[it.code],x,y);
+  return 1e9;
+}
+function landAt(x,y,cands){const o=cands.filter(it=>it.kind==='gebied'&&inPath(regP[it.code],x,y));const c=inCountry(x,y);const it=c&&BY['land'+c];if(it&&cands.includes(it))o.push(it);return o}
+function identify(x,y,cands){ // wat ligt hier? (voor de "Dit is …"-feedback)
+  let best=null,bd=1e9;
+  for(const it of cands){if(it.kind==='land'||it.kind==='sea'||it.kind==='gebied')continue;const d=distTo(it,x,y);if(d<=TOL[it.kind]&&d<bd){bd=d;best=it}}
+  if(best)return best;
+  if(onLand(x,y)){const o=landAt(x,y,cands);return o.length?o[0]:null}
+  let s=null;bd=1e9;for(const it of cands){if(it.kind!=='sea')continue;const d=distTo(it,x,y);if(d<bd){bd=d;s=it}}
+  return s;
+}
+function isHit(it,x,y){
+  if(it.kind==='land'){ // vergevingsgezind: ook goed als je net over de grens staat, en ruimer bij kleine landen
+    if(inCountry(x,y)===it.code)return true;
+    for(let a=0;a<6;a++)if(inCountry(x+Math.cos(a*1.047)*3,y+Math.sin(a*1.047)*3)===it.code)return true;
+    const l=GEO.labels[it.code];return CFG.klein.includes(it.code)&&Math.hypot(l[0]-x,l[1]-y)<12;
+  }
+  if(it.kind==='gebied')return inPath(regP[it.code],x,y);
+  if(it.kind==='sea'){if(onLand(x,y))return false;let bd=1e9,s=null;ITEMS.forEach(i=>{if(i.kind!=='sea')return;const d=distTo(i,x,y);if(d<bd){bd=d;s=i}});return s===it}
+  return distTo(it,x,y)<=TOL[it.kind]*1.25;
+}
+function centerOf(it){
+  if(it.kind==='land')return GEO.labels[it.code];if(it.kind==='gebied')return GEO.rlabels[it.code];if(it.kind==='stad')return GEO.cities[it.code];
+  if(it.kind==='sea')return GEO.seas[it.code][0];return GEO.wl[it.code];
+}
+function wordFor(it){if(it.kind==='land')return'het land';if(it.kind==='stad')return it.cat==='stad'?'de hoofdstad':'de stad';if(it.kind==='gebied')return'het gebied';if(it.kind==='berg')return'het gebergte';if(it.kind==='river')return'de rivier';if(/^het /i.test(it.name))return'';return /oceaan/i.test(it.name)?'de oceaan':'de zee'}
+
+/* ================= Wereld bouwen: hoogtekaart + kleurkaart ================= */
+const S=2,MG=60,HMAXU=26,HSC=HMAXU/255;   // px per kaarteenheid, marge rond de kaart, max hoogte in eenheden
+let MW,MH,FW,FH,cmap,cmap2,hmap,cities=[];
+function hash(x,y){let n=Math.imul(x,374761393)+Math.imul(y,668265263)|0;n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296}
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+function fbm(x,y,o){let s=0,a=.5,f=1;for(let i=0;i<o;i++){s+=a*vnoise(x*f,y*f);a*=.5;f*=2}return s}
+function blur(a,w,h,r,passes){
+  const t=new Float32Array(a.length),n=2*r+1;
+  for(let p=0;p<passes;p++){
+    for(let y=0;y<h;y++){const o=y*w;let acc=0;for(let x=-r;x<=r;x++)acc+=a[o+clamp(x,0,w-1)];for(let x=0;x<w;x++){t[o+x]=acc/n;const q=x-r,b=x+r+1;acc+=a[o+(b<w?b:w-1)]-a[o+(q>0?q:0)]}}
+    for(let x=0;x<w;x++){let acc=0;for(let y=-r;y<=r;y++)acc+=t[clamp(y,0,h-1)*w+x];for(let y=0;y<h;y++){a[y*w+x]=acc/n;const q=y-r,b=y+r+1;acc+=t[(b<h?b:h-1)*w+x]-t[(q>0?q:0)*w+x]}}
+  }
+}
+const rgb=(r,g,b)=>(255<<24|b<<16|g<<8|r)>>>0;
+const hex=s=>[parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];
+const PAL={
+  sea:['#16307c','#1d459c','#2a62bd','#3d8ad6','#74c4e6'].map(hex),
+  sand:hex('#e6d59a'),river:hex('#3d8ad6'),
+  grass:['#3d8a3a','#4c9d42','#62b04c','#7cc05a'].map(hex),
+  north:['#3b7650','#4a875a','#6a9a72','#86ac84'].map(hex),
+  dry:['#8aa646','#a9b556','#c4b964','#d6c476'].map(hex),
+  high:['#6f8648','#857f52','#8d7a62'].map(hex),
+  rock:['#76685c','#8a7a6a','#9c8c7c'].map(hex),
+  snow:['#aab6e2','#dfe6fb','#ffffff'].map(hex)
+};
+// Scandinavisch Hoogland: alleen reliëf (geen quiz-item). Ligging afgeleid uit de gedeelde grens Noorwegen/Zweden,
+// gladgestreken en naar de Noorse kant geschoven; daarna door naar het zuidwesten van Noorwegen (richting landlabel).
+function scandRidge(){
+  const n=ITEMS.find(i=>i.kind==='land'&&i.name==='Noorwegen'),z=ITEMS.find(i=>i.kind==='land'&&i.name==='Zweden');if(!n||!z)return null;
+  const zp=parsePts(GEO.quiz[z.code]).flat(),np=parsePts(GEO.quiz[n.code]).sort((a,b)=>b.length-a.length)[0];
+  const b=np.filter(p=>zp.some(q=>Math.abs(q[0]-p[0])<1.2&&Math.abs(q[1]-p[1])<1.2)).sort((a,c)=>a[1]-c[1]);
+  if(b.length<10)return null;
+  const sm=b.map((_,i)=>{let x=0,y=0,k=0;for(let j=Math.max(0,i-5);j<=Math.min(b.length-1,i+5);j++){x+=b[j][0];y+=b[j][1];k++}return[x/k,y/k]});
+  const out=[];
+  for(let i=0;i<sm.length;i+=4){const a=sm[Math.max(0,i-4)],c=sm[Math.min(sm.length-1,i+4)];let nx=c[1]-a[1],ny=-(c[0]-a[0]);const l=Math.hypot(nx,ny)||1;nx/=l;ny/=l;if(nx>0){nx=-nx;ny=-ny}
+    out.push([sm[i][0]+nx*10,sm[i][1]+ny*10])}
+  const l=GEO.labels[n.code];out.push([l[0]-8,l[1]+20]);
+  return out;
+}
+function buildWorld(){
+  FW=Math.ceil(W+2*MG);FH=Math.ceil(H+2*MG);MW=FW*S;MH=FH*S;
+  const mts=LAGE_BERGEN[SETK]||{};
+  // 1) maskers op halve resolutie (1 px = 1 eenheid): R=land, G=water, B=gebergte
+  const cv=document.createElement('canvas');cv.width=FW;cv.height=FH;let c=cv.getContext('2d',{willReadFrequently:true});
+  const paint=(sc)=>{
+    c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.fillStyle='#000';c.fillRect(0,0,cv.width,cv.height);
+    c.setTransform(sc,0,0,sc,MG*sc,MG*sc);c.globalCompositeOperation='lighter';
+    c.fillStyle='#f00';landP.forEach(p=>c.fill(p));
+    c.fillStyle='#0f0';c.strokeStyle='#0f0';GEO.lakes.forEach(d=>c.fill(new Path2D(d)));
+    c.lineWidth=1.5;c.lineCap=c.lineJoin='round';for(const k in GEO.rivers)GEO.rivers[k].forEach(d=>c.stroke(new Path2D(d)));
+  };
+  paint(1);
+  c.strokeStyle='#00f';c.lineWidth=13;
+  for(const k in GEO.mts){c.globalAlpha=mts[k]||1;c.beginPath();GEO.mts[k].forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke()}
+  const sr=scandRidge();if(sr){c.globalAlpha=.6;c.lineWidth=17;c.beginPath();sr.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke()}
+  c.globalAlpha=1;
+  let d=c.getImageData(0,0,FW,FH).data;
+  const n=FW*FH,coast=new Float32Array(n),inl=new Float32Array(n),mt=new Float32Array(n),wat=new Float32Array(n);
+  for(let i=0;i<n;i++){coast[i]=inl[i]=d[i*4]/255;wat[i]=d[i*4+1]/255;mt[i]=d[i*4+2]/255}
+  blur(coast,FW,FH,3,2);blur(inl,FW,FH,16,2);blur(mt,FW,FH,6,3);
+  // 2) hoogte
+  const hF=new Float32Array(n);hmap=new Uint8Array(n);
+  for(let y=0,i=0;y<FH;y++)for(let x=0;x<FW;x++,i++){
+    const cs=coast[i];if(cs<=.5){hF[i]=0;continue}
+    let r=clamp((cs-.5)*2.4,0,1);r=r*r*(3-2*r);
+    const hills=Math.max(0,fbm(x*.022,y*.022,4)-.42)*9*clamp((inl[i]-.6)*3,0,1);
+    const m=clamp(mt[i]*1.7,0,1),ridge=1-Math.abs(2*fbm(x*.07+9,y*.07+3,3)-1);
+    let h=r*(.35+hills)+Math.pow(m,1.4)*(HMAXU-4)*(.4+.6*ridge);
+    h*=1-.75*wat[i];
+    hF[i]=h;hmap[i]=clamp(h/HMAXU*255,1,255);
+  }
+  // 3) kleur op volle resolutie: R=land, G=water, B=grens
+  cv.width=MW;cv.height=MH;c=cv.getContext('2d',{willReadFrequently:true});
+  paint(S);
+  c.strokeStyle='#00f';c.lineWidth=.45;landP.forEach(p=>c.stroke(p));
+  d=c.getImageData(0,0,MW,MH).data;
+  cmap=new Uint32Array(MW*MH);
+  for(let y=0,i=0;y<MH;y++){
+    const hy=y>>1,lat=(y/S-MG)/H;
+    for(let x=0;x<MW;x++,i++){
+      const hx=x>>1,hi=hy*FW+hx,di=i*4,nz=hash(x,y);let col,lit=1;
+      if(d[di]<110){ // zee: dieptetint, lichter bij de kust
+        const t=clamp(inl[hi]*2+(nz-.5)*.06,0,.999);col=PAL.sea[t>.88?4:t>.72?3:t>.5?2:t>.25?1:0];
+      }else if(d[di+1]>100){col=PAL.river}
+      else{
+        const h=hF[hi];
+        if(hx>0&&hy>0&&hx<FW-1&&hy<FH-1)lit=clamp(1+.38*((hF[hi+1]-hF[hi-1])*.9-(hF[hi+FW]-hF[hi-FW])*.45),.5,1.4);
+        lit=Math.round(lit*12)/12;
+        const v=fbm(x*.012,y*.012,3)+(nz-.5)*.3;
+        if(coast[hi]<.6&&h<1)col=PAL.sand;
+        else if(h>15+nz*3)col=PAL.snow[lit+(nz-.5)*.12>1.12?2:lit>.92?1:0];
+        else if(h>9+nz*3){col=PAL.rock[clamp(v*3|0,0,2)]}
+        else if(h>4.5+nz*2.5){col=PAL.high[clamp(v*3|0,0,2)]}
+        else{
+          const dry=(lat-.6)*2.6+(fbm(x*.006+5,y*.006,2)-.5)*1.6+(nz-.5)*.25,nor=(.3-lat)*3+(nz-.5)*.25;
+          const p=dry>.35?PAL.dry:nor>.35?PAL.north:PAL.grass;col=p[clamp(v*4.4-.2|0,0,3)];
+        }
+        if(d[di+2]>90&&coast[hi]>.93)lit*=.78; // landsgrens
+      }
+      cmap[i]=rgb(clamp(col[0]*lit,0,255)|0,clamp(col[1]*lit,0,255)|0,clamp(col[2]*lit,0,255)|0);
+    }
+  }
+  // 4) steden: grijze vlek met stratenpatroon + lijst voor de sprites
+  cities=[];
+  for(const k in GEO.cities){
+    const[cx,cy]=GEO.cities[k],it=ITEMS.find(i=>i.kind==='stad'&&i.code===k),cap=!it||it.cat==='stad',R=(cap?2.8:2)*S;
+    cities.push({x:cx,y:cy,cap,seed:cities.length});
+    const px=(cx+MG)*S|0,py=(cy+MG)*S|0;
+    for(let y=-R;y<=R;y++)for(let x=-R;x<=R;x++){
+      if(x*x+y*y>R*R+hash(px+x,py+y)*6)continue;const i=(py+y)*MW+px+x;if(d[i*4]<110)continue;
+      const road=((px+x)%3===0)||((py+y)%3===0);cmap[i]=road?rgb(74,70,88):hash(px+x>>1,py+y>>1)>.5?rgb(178,170,178):rgb(140,132,150);
+    }
+  }
+  // 5) mip (halve resolutie) voor ver weg
+  cmap2=new Uint32Array(n);
+  for(let y=0,i=0;y<FH;y++)for(let x=0;x<FW;x++,i++){
+    const j=(y*2)*MW+x*2,a=cmap[j],b=cmap[j+1],e=cmap[j+MW],f=cmap[j+MW+1];
+    cmap2[i]=rgb(((a&255)+(b&255)+(e&255)+(f&255))>>2,((a>>8&255)+(b>>8&255)+(e>>8&255)+(f>>8&255))>>2,((a>>16&255)+(b>>16&255)+(e>>16&255)+(f>>16&255))>>2);
+  }
+}
+function groundAt(x,y){const hx=x+MG|0,hy=y+MG|0;if(x+MG<0||y+MG<0||hx>=FW||hy>=FH)return 0;return hmap[hy*FW+hx]*HSC}
+
+/* ================= Lucht: Outrun-zonsondergang als panorama ================= */
+const RW=384,RH=216,K=RW/2,PW=RW*4,PH=330,PHZ=220;
+const FOG=[236,150,126],FOGC=rgb(FOG[0],FOG[1],FOG[2]);
+const sky=new Uint32Array(PW*PH),cloud=new Uint32Array(PW*PH);
+function buildSky(){
+  const stops=[[0,[18,10,58]],[.38,[70,22,110]],[.62,[176,44,124]],[.8,[250,104,84]],[.93,[255,180,96]],[1,[255,226,160]]];
+  const sunX=PW*.75,sunY=PHZ-30,sunR=40;
+  for(let y=0;y<PH;y++){
+    let col;
+    if(y>=PHZ)col=FOG;
+    else{let t=y/PHZ;t=Math.floor(t*40)/40; // bandjes
+      let k=0;while(k<stops.length-2&&t>stops[k+1][0])k++;const a=stops[k],b=stops[k+1],f=clamp((t-a[0])/(b[0]-a[0]),0,1);
+      col=[0,1,2].map(j=>a[1][j]+(b[1][j]-a[1][j])*f);}
+    const base=rgb(col[0]|0,col[1]|0,col[2]|0);
+    for(let x=0;x<PW;x++){
+      let c=base;
+      if(y<PHZ){
+        const dx=x-sunX,dy=y-sunY,dd=dx*dx+dy*dy;
+        if(dd<sunR*sunR){const band=dy>-6?((dy+6)%9)<(1.5+(dy+6)*.09):false; // strepen onderin de zon
+          if(!band){const f=(dy+sunR)/(2*sunR);c=rgb(255,(236-f*150)|0,(120-f*40)|0)}}
+        else if(y<PHZ*.55&&hash(x,y)>.9985)c=rgb(255,240,255); // sterren
+      }
+      sky[y*PW+x]=c;
+    }
+  }
+  // wolken: platte pixelwolken met lichte onderkant
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  for(let k=0;k<26;k++){
+    const cx=rnd()*PW,cy=PHZ-25-rnd()*120,w=30+rnd()*70,hh=5+rnd()*7;
+    for(let y=-hh;y<=hh;y++)for(let x=-w;x<=w;x++){
+      const e=(x/w)*(x/w)+(y/hh)*(y/hh)+ (vnoise((cx+x)*.09,(cy+y)*.3)-.5)*.9;if(e>1)continue;
+      const X=((cx+x|0)%PW+PW)%PW,Y=cy+y|0;if(Y<0||Y>=PHZ)continue;
+      cloud[Y*PW+X]=y>hh*.25?rgb(255,170,150):y>-hh*.3?rgb(206,110,160):rgb(128,70,150);
+    }
+  }
+}
+
+/* ================= Sprites: steden + heli ================= */
+function makeCitySprite(cap,seed){
+  const w=48,h=48,cv=document.createElement('canvas');cv.width=w;cv.height=h;const c=cv.getContext('2d');
+  let s=seed*97+13;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+  const box=(x,bw,bh,col)=>{c.fillStyle=col;c.fillRect(x,h-bh,bw,bh);c.fillStyle='rgba(0,0,0,.28)';c.fillRect(x+bw-2,h-bh,2,bh);
+    for(let yy=h-bh+2;yy<h-2;yy+=3)for(let xx=x+1;xx<x+bw-3;xx+=3){c.fillStyle=rnd()>.45?'#ffe27a':'#3a2c5c';c.fillRect(xx,yy,1,2)}};
+  const cols=['#8e86a8','#a59ab8','#6f6890','#b7a6a6','#7d86a6'];
+  const nb=cap?9:6;
+  for(let i=0;i<nb;i++){const bw=5+(rnd()*5|0),x=2+(rnd()*(w-bw-4)|0);box(x,bw,(cap?10:7)+(rnd()*(cap?16:9)|0),cols[i%cols.length])}
+  let beacon=null;
+  if(cap){box(21,7,36,'#c9c0de');c.fillStyle='#d8d0ea';c.fillRect(23,6,3,6);c.fillStyle='#fff';c.fillRect(24,1,1,5);beacon=[24,0]}
+  const d=c.getImageData(0,0,w,h).data,px=new Uint32Array(w*h);
+  for(let i=0;i<w*h;i++)px[i]=d[i*4+3]>128?rgb(d[i*4],d[i*4+1],d[i*4+2]):0;
+  return{w,h,px,beacon,uw:cap?5.5:4}; // uw = breedte in kaarteenheden
+}
+let sprCap=[],sprTown=[];
+const heliSpr=document.createElement('canvas');
+function buildSprites(){
+  sprCap=[0,1,2].map(i=>makeCitySprite(true,i+1));sprTown=[0,1,2].map(i=>makeCitySprite(false,i+11));
+  // heli van achteren gezien, 64x48
+  heliSpr.width=64;heliSpr.height=48;const c=heliSpr.getContext('2d');const R=(x,y,w,h,col)=>{c.fillStyle=col;c.fillRect(x,y,w,h)};
+  R(15,41,12,2,'#2b2438');R(37,41,12,2,'#2b2438');R(19,35,2,6,'#3b3350');R(43,35,2,6,'#3b3350'); // skids
+  const hw=[6,9,11,12,13,14,14,14,14,14,14,13,13,12,11,10,8,6];
+  hw.forEach((w,i)=>{const y=17+i;R(32-w,y,w*2,1,i<4?'#ff7a66':i<12?'#e2473a':'#a82c28');R(32-w,y,2,1,'#ff9c88');R(32+w-3,y,3,1,'#8c1f24')});
+  R(24,17,16,1,'#9fe4ff');R(22,18,20,3,'#7fd0f4');R(23,19,6,1,'#e8fbff');           // glas bovenop
+  R(27,22,10,2,'#ffd23e');                                                         // gele streep
+  R(30,27,4,12,'#c23a30');R(31,27,1,12,'#ff7a66');                                 // staartboom naar de kijker toe
+  R(22,38,20,2,'#a82c28');R(30,36,4,9,'#e2473a');R(31,36,1,9,'#ff9c88');           // stabilo + staartvin
+  R(35,38,1,6,'#2b2438');                                                          // staartrotor
+  R(31,11,2,6,'#3b3350');                                                          // mast
+}
+
+/* ================= Renderer: Voxel Space ================= */
+const scr=$('scr'),sctx=scr.getContext('2d');sctx.imageSmoothingEnabled=false;
+const img=sctx.createImageData(RW,RH),fb=new Uint32Array(img.data.buffer),zb=new Float32Array(RW*RH),ybuf=new Int32Array(RW),hzc=new Int32Array(RW);
+const FAR=440,FOG0=90,MIPZ=70,NEARB=40;
+const cam={x:0,y:0,h:10,phi:0,hz:78,roll:0};
+function fogMix(c,fi){const q=256-fi;return(255<<24|(((c>>16&255)*q+FOG[2]*fi)>>8)<<16|(((c>>8&255)*q+FOG[1]*fi)>>8)<<8|(((c&255)*q+FOG[0]*fi)>>8))>>>0}
+function renderWorld(time){
+  const phi=cam.phi,fx=Math.sin(phi),fy=-Math.cos(phi),rx=Math.cos(phi),ry=Math.sin(phi),camx=cam.x,camy=cam.y,camh=cam.h;
+  // lucht
+  const p0=Math.floor(phi/(2*Math.PI)*PW),cd=Math.floor(time*2.5);
+  for(let i=0;i<RW;i++){
+    const hz=hzc[i]=cam.hz+Math.round((i-RW/2)*cam.roll);
+    const px=((p0+i-RW/2)%PW+PW)%PW,cx=(px+cd)%PW;
+    for(let y=0,idx=i;y<RH;y++,idx+=RW){let py=y-hz+PHZ;if(py<0)py=0;else if(py>=PH)py=PH-1;const o=py*PW;fb[idx]=cloud[o+cx]||sky[o+px]}
+    ybuf[i]=RH;
+  }
+  zb.fill(1e9);
+  // terrein, van dichtbij naar ver
+  const tick=(time*14)|0;
+  let z=1.2,dz=.3;
+  while(z<FAR){
+    const far=z>MIPZ,near=z<NEARB,inv=K/z,sx=rx*2*z/RW,sy=ry*2*z/RW;
+    let px=camx+fx*z-rx*z+MG,py=camy+fy*z-ry*z+MG;
+    let f=(z-FOG0)/(FAR-FOG0);f=f<0?0:f;const fi=(Math.pow(f,.8)*256)|0;
+    for(let i=0;i<RW;i++,px+=sx,py+=sy){
+      const yb=ybuf[i];if(yb<=0)continue;
+      let h=0,hi=-1;const hx=px|0,hy=py|0;
+      if(px>=0&&py>=0&&hx<FW-1&&hy<FH-1){
+        hi=hy*FW+hx;
+        if(near){const u=px-hx,v=py-hy,a=hmap[hi],b=hmap[hi+1],c=hmap[hi+FW],d=hmap[hi+FW+1];h=a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+        else h=hmap[hi];
+      }
+      let y=((camh-h*HSC)*inv+hzc[i])|0;
+      if(y<yb){
+        if(y<0)y=0;
+        let c;
+        if(hi<0)c=0xff7c3016;
+        else if(far)c=cmap2[hi];
+        else{const mx=px*S|0,my=py*S|0;c=cmap[my*MW+mx];if(h<1&&((mx*5+my*11+tick*3)&127)<3&&(c>>16&255)>150)c=0xffffeebb} // glinstering op zee
+        if(fi>0)c=fogMix(c,fi);
+        for(let idx=y*RW+i,e=yb*RW+i;idx<e;idx+=RW){fb[idx]=c;zb[idx]=z}
+        ybuf[i]=y;
+      }
+    }
+    z+=dz;dz=z*.0115;if(dz<.3)dz=.3;
+  }
+  // stad-sprites, van ver naar dichtbij, per pixel getest tegen de dieptebuffer
+  const vis=[];
+  for(const ct of cities){const dx=ct.x-camx,dy=ct.y-camy,zz=dx*fx+dy*fy;if(zz<3||zz>FAR*.8)continue;const t=dx*rx+dy*ry;if(Math.abs(t)>zz+8)continue;vis.push([zz,t,ct])}
+  vis.sort((a,b)=>b[0]-a[0]);
+  const blinkOn=(time*2|0)&1;
+  for(const[zz,t,ct]of vis){
+    const sp=(ct.cap?sprCap:sprTown)[ct.seed%3],sc=sp.uw/sp.w*K/zz,dw=sp.w*sc,dh=sp.h*sc;
+    const cxs=RW/2+t/zz*K,x0=Math.round(cxs-dw/2),x1=Math.round(cxs+dw/2);
+    const ci=clamp(cxs|0,0,RW-1),base=((camh-groundAt(ct.x,ct.y))*K/zz+hzc[ci])|0,y0=Math.round(base-dh);
+    let f=(zz-FOG0)/(FAR-FOG0);f=f<0?0:f;const fi=(Math.pow(f,.8)*256)|0,zt=zz-1.5;
+    for(let x=Math.max(0,x0);x<Math.min(RW,x1);x++){
+      const u=Math.min(sp.w-1,(x-x0)/sc|0);
+      for(let y=Math.max(0,y0);y<Math.min(RH,base);y++){
+        const v=Math.min(sp.h-1,(y-y0)/sc|0);let c=sp.px[v*sp.w+u];if(!c)continue;
+        const idx=y*RW+x;if(zb[idx]<zt)continue;
+        fb[idx]=fi?fogMix(c,fi):c;zb[idx]=zt;
+      }
+    }
+    if(sp.beacon&&blinkOn){const bx=Math.round(x0+sp.beacon[0]*sc),by=Math.round(y0+sp.beacon[1]*sc);
+      for(let y=by-1;y<=by+1;y++)for(let x=bx-1;x<=bx+1;x++)if(x>=0&&y>=0&&x<RW&&y<RH&&zb[y*RW+x]>=zt)fb[y*RW+x]=(x===bx||y===by)?0xff4040ff:fb[y*RW+x]}
+  }
+  sctx.putImageData(img,0,0);
+}
+
+/* ================= Heli + vliegmodel ================= */
+const CRUISE=42,TURBO=74,CAMD=12,CAMUP=2.6;
+const heli={x:0,y:0,phi:0,spd:0,yaw:0,agl:4.5,aglT:4.5,alt:6,rotor:0,trail:[]};
+const input={turn:0,thr:0,up:0,turbo:false};
+const keys={};
+function drawHeli(time){
+  const g=groundAt(heli.x,heli.y),cxs=RW/2,hzM=hzc[RW>>1];
+  const hy=hzM+(cam.h-heli.alt)*K/CAMD,sy=hzM+(cam.h-g)*K/CAMD;
+  // schaduw op de grond
+  if(sy<RH+10){const k=clamp(1-(heli.alt-g)/22,.35,1);sctx.fillStyle='rgba(10,5,30,.42)';sctx.beginPath();sctx.ellipse(cxs,sy,22*k,5*k,0,0,Math.PI*2);sctx.fill()}
+  sctx.save();sctx.translate(cxs,Math.round(hy));sctx.rotate(heli.yaw*.32);
+  const bob=Math.sin(time*3)*1.2,pit=heli.spd/TURBO*3;
+  sctx.drawImage(heliSpr,-32,-30+bob-pit);
+  // rotor: schijf + twee bladen
+  const ry=-19+bob-pit;sctx.fillStyle='rgba(230,235,255,.16)';sctx.beginPath();sctx.ellipse(0,ry,31,6,0,0,Math.PI*2);sctx.fill();
+  sctx.strokeStyle='rgba(30,24,48,.9)';sctx.lineWidth=1.6;sctx.beginPath();
+  for(let b=0;b<2;b++){const a=heli.rotor+b*Math.PI/2,dx=Math.cos(a)*31,dy=Math.sin(a)*6;sctx.moveTo(-dx,ry-dy);sctx.lineTo(dx,ry+dy)}
+  sctx.stroke();sctx.restore();
+}
+function flyHeli(dt,ctl){
+  const turnT=ctl.turn*1.55;heli.yaw+=(turnT-heli.yaw)*Math.min(1,dt*5);heli.phi+=heli.yaw*dt;
+  const vmax=ctl.turbo?TURBO:CRUISE;
+  if(ctl.thr>0)heli.spd+=(heli.spd<vmax?46:-30)*ctl.thr*dt;
+  else if(ctl.thr<0)heli.spd-=(heli.spd>0?95:30)*dt;
+  else heli.spd-=Math.sign(heli.spd)*Math.min(Math.abs(heli.spd),9*dt);
+  if(ctl.brake)heli.spd-=Math.sign(heli.spd)*Math.min(Math.abs(heli.spd),170*dt);
+  heli.spd=clamp(heli.spd,-14,TURBO);
+  heli.x=clamp(heli.x+Math.sin(heli.phi)*heli.spd*dt,2,W-2);heli.y=clamp(heli.y-Math.cos(heli.phi)*heli.spd*dt,2,H-2);
+  heli.aglT=clamp(heli.aglT+ctl.up*7*dt,2.6,16);
+  const tgt=ctl.land!=null?ctl.land:heli.aglT;heli.agl+=(tgt-heli.agl)*Math.min(1,dt*(ctl.land!=null?5:3));
+  // terrein volgen, met vooruitkijken zodat je nooit een berg in vliegt
+  let g=groundAt(heli.x,heli.y);const fx=Math.sin(heli.phi),fy=-Math.cos(heli.phi);
+  for(let k=1;k<=3;k++)g=Math.max(g,groundAt(heli.x+fx*heli.spd*.25*k,heli.y+fy*heli.spd*.25*k)-k*.3);
+  heli.alt+=(g+heli.agl-heli.alt)*Math.min(1,dt*4.5);heli.alt=Math.max(heli.alt,groundAt(heli.x,heli.y)+.5);
+  heli.rotor+=dt*27;
+  // camera erachter
+  cam.phi=heli.phi;cam.x=heli.x-fx*CAMD;cam.y=heli.y-fy*CAMD;
+  const ch=Math.max(heli.alt+CAMUP,groundAt(cam.x,cam.y)+1.6,groundAt(heli.x-fx*CAMD*.5,heli.y-fy*CAMD*.5)+1.2);cam.h+=(ch-cam.h)*Math.min(1,dt*8);
+  cam.roll=heli.yaw*.085;cam.hz=74+Math.round((heli.agl-4.5)*1.2);
+}
+
+/* ================= Geluid (alles gesynthetiseerd) ================= */
+let AC=null,master=null,rotG=null,rotF=null,rotL=null,musG=null,muted=store.get('mute',false),musStep=0,musNext=0,musicOn=false;
+function audioInit(){
+  if(AC){if(AC.state!=='running')AC.resume();return}
+  try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return}
+  master=AC.createGain();master.gain.value=muted?0:.55;master.connect(AC.destination);
+  const nb=AC.createBuffer(1,AC.sampleRate,AC.sampleRate),ch=nb.getChannelData(0);for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;
+  const src=AC.createBufferSource();src.buffer=nb;src.loop=true;rotF=AC.createBiquadFilter();rotF.type='lowpass';rotF.frequency.value=260;
+  rotG=AC.createGain();rotG.gain.value=0;const am=AC.createGain();am.gain.value=.5;
+  rotL=AC.createOscillator();rotL.type='sawtooth';rotL.frequency.value=13;const lg=AC.createGain();lg.gain.value=.5;rotL.connect(lg);lg.connect(am.gain);
+  src.connect(rotF);rotF.connect(am);am.connect(rotG);rotG.connect(master);src.start();rotL.start();
+  musG=AC.createGain();musG.gain.value=.16;musG.connect(master);
+}
+function tone(f,t,d,type,vol,dest){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(vol||.2,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(dest||master);o.start(t);o.stop(t+d+.02)}
+function sfx(k){if(!AC)return;const t=AC.currentTime;
+  if(k==='good')[523,659,784,1047,1319].forEach((f,i)=>tone(f,t+i*.07,.16,'square',.2));
+  else if(k==='bad'){tone(196,t,.22,'sawtooth',.22);tone(147,t+.18,.35,'sawtooth',.22)}
+  else if(k==='hint'){tone(880,t,.1,'triangle',.25);tone(880,t+.16,.1,'triangle',.25)}
+  else if(k==='land'){const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(620,t);o.frequency.exponentialRampToValueAtTime(180,t+.5);g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.connect(g);g.connect(master);o.start(t);o.stop(t+.55)}
+  else if(k==='over')[392,330,262,196].forEach((f,i)=>tone(f,t+i*.2,.3,'square',.2));
+  else tone(k==='blip2'?990:660,t,.06,'square',.15);
+}
+// chiptune-loop: bas + arpeggio over vier akkoorden (Am F C G)
+const CH=[[110,[440,523,659]],[87.3,[349,440,523]],[130.8,[523,659,784]],[98,[392,494,587]]],ARP=[0,1,2,1,0,2,1,2];
+// achtergrondmuziek uit bestand; lukt laden/afspelen niet, dan neemt de chiptune het stil over
+const bgm=$('bgm');let bgmOK=true,bgmDead=false,bgmT0=0;bgm.volume=.2;
+function bgmFail(){bgmOK=false;try{bgm.pause()}catch(e){}}
+const bgmDie=()=>{bgmDead=true;bgmFail()};bgm.addEventListener('error',bgmDie);bgm.lastElementChild.addEventListener('error',bgmDie); // laatste <source> faalt = geen bruikbare bron
+function bgmPlay(){if(!bgmOK)return;bgmT0=performance.now();try{const p=bgm.play();if(p)p.catch(e=>{if(e&&e.name!=='AbortError')bgmFail()})}catch(e){bgmFail()}}
+function setMusic(on){musicOn=on;if(on){bgmOK=!bgmDead;if(bgmOK){try{bgm.currentTime=0}catch(e){}bgmPlay()}}else bgm.pause()}
+function music(){
+  if(bgmOK&&musicOn&&bgm.readyState<2&&performance.now()-bgmT0>2000)bgmFail(); // laadt niet: terugvallen
+  if(!AC||!musicOn||bgmOK)return;const sl=60/128/4;if(musNext<AC.currentTime)musNext=AC.currentTime+.05;
+  while(musNext<AC.currentTime+.2){
+    const s=musStep%64,[bass,arp]=CH[s>>4],t=musNext;
+    if(s%4===0||s%16===10)tone(bass*(s%8===4?2:1),t,sl*1.8,'square',.5,musG);
+    if(s%2===0)tone(arp[ARP[(s>>1)%8]]*(s%32>=24?2:1),t,sl*1.4,'triangle',.5,musG);
+    if(s%4===2)tone(6000,t,.03,'square',.08,musG);
+    musStep++;musNext+=sl;
+  }
+}
+function setMute(m){muted=m;store.set('mute',m);if(master)master.gain.value=m?0:.55;bgm.muted=m;$('mute').textContent=$('mSound').textContent=m?'GELUID: UIT':'GELUID: AAN'}
+
+/* ================= Kaart (schoolkaart-stijl) ================= */
+const mapCv=$('map'),mctx=mapCv.getContext('2d');let mapBase=null,mapKey='',mapBig=false,mapDpr=1;
+const VIEWU=310; // kaarteenheden in beeld over de breedte van de minikaart
+function drawSchoolMap(c,sc,names){ // schoolatlas-stijl; wordt één keer per kaart/niveau op hoge resolutie getekend
+  c.save();c.scale(sc,sc);c.lineJoin=c.lineCap='round';
+  const g=c.createLinearGradient(0,0,W*.4,H);g.addColorStop(0,'#d9edf7');g.addColorStop(1,'#b4d6ea');c.fillStyle=g;c.fillRect(0,0,W,H);
+  c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=.5;c.beginPath();for(let x=50;x<W;x+=50){c.moveTo(x,0);c.lineTo(x,H)}for(let y=50;y<H;y+=50){c.moveTo(0,y);c.lineTo(W,y)}c.stroke(); // graadnet
+  const others=GEO.other.map(([a3,d])=>[a3,new Path2D(d)]),all=new Path2D();others.forEach(o=>all.addPath(o[1]));for(const k in ctyP)all.addPath(ctyP[k]);
+  c.save();c.shadowColor='rgba(30,80,120,.5)';c.shadowBlur=5*sc;c.fillStyle='#efece4';c.fill(all);c.restore();                 // zachte kustschaduw
+  others.forEach(([a3,p])=>{c.fillStyle=CFG.ocol[a3]||'#f1eee6';c.fill(p)});
+  for(const k in GEO.quiz){c.fillStyle=CFG.col[k];c.fill(ctyP[k])}
+  c.strokeStyle='#5f5b52';c.lineWidth=.55;c.stroke(all);                                                                        // strakke grenzen
+  c.fillStyle='#bfe0f2';c.strokeStyle='#7fb2d2';c.lineWidth=.3;GEO.lakes.forEach(d=>{const p=new Path2D(d);c.fill(p);c.stroke(p)});
+  CFG.vlak.forEach(k=>{c.fillStyle='rgba(255,138,0,.3)';c.fill(regP[k])});
+  c.save();c.strokeStyle='#5f5b52';c.setLineDash([3,2]);c.lineWidth=.8;GEO.rborders.forEach(d=>c.stroke(new Path2D(d)));CFG.vlak.forEach(k=>c.stroke(regP[k]));c.restore();
+  for(const k in rivP){c.strokeStyle='#fff';c.lineWidth=2.6;rivP[k].forEach(p=>c.stroke(p));c.strokeStyle='#1c6fb5';c.lineWidth=1.5;rivP[k].forEach(p=>c.stroke(p))}
+  c.fillStyle='#9a622c';c.strokeStyle='#4a2c10';c.lineWidth=.5;
+  for(const k in GEO.mts)interp(GEO.mts[k],8.5).forEach(([x,y],i)=>{const o=i%2?2.4:-2.4;c.beginPath();c.moveTo(x-4.4,y+3+o);c.lineTo(x,y-4.6+o);c.lineTo(x+4.4,y+3+o);c.closePath();c.fill();c.stroke();
+    c.fillStyle='#fff';c.beginPath();c.moveTo(x-1.5,y-2+o);c.lineTo(x,y-4.6+o);c.lineTo(x+1.5,y-2+o);c.fill();c.fillStyle='#9a622c'});
+  for(const k in GEO.cities){const[x,y]=GEO.cities[k],it=ITEMS.find(i=>i.kind==='stad'&&i.code===k),cap=!it||it.cat==='stad';c.strokeStyle='#3a0d0a';c.lineWidth=.6;
+    if(cap){c.fillStyle='#fff';c.beginPath();c.rect(x-3.6,y-3.6,7.2,7.2);c.fill();c.stroke();c.fillStyle='#c4261d';c.fillRect(x-1.9,y-1.9,3.8,3.8)}   // hoofdstad: vierkant
+    else{c.fillStyle='#c4261d';c.beginPath();c.arc(x,y,2.7,0,7);c.fill();c.stroke()}}                                                               // stad: stip
+  if(names){c.fillStyle='#1b2a33';c.textAlign='center';c.font='700 10px system-ui,sans-serif';c.strokeStyle='rgba(255,255,255,.85)';c.lineWidth=2.4;
+    for(const k in GEO.labels){const[x,y]=GEO.labels[k],n=BY['land'+k].name;c.strokeText(n,x,y+3);c.fillText(n,x,y+3)}}
+  c.strokeStyle='#24153f';c.lineWidth=2;c.strokeRect(1,1,W-2,H-2);
+  c.restore();
+}
+function layoutMap(){
+  const st=$('stage').getBoundingClientRect(),dpr=mapDpr=Math.min(2,window.devicePixelRatio||1);
+  let w,h;if(mapBig){h=st.height*.84;w=h*W/H;if(w>st.width*.9){w=st.width*.9;h=w*H/W}}else if(RADAR){w=h=Math.min(st.width*.3,st.height*.47)}else{w=st.width*.3;h=st.height*.42}
+  mapCv.style.width=w+'px';mapCv.style.height=h+'px';mapCv.width=Math.round(w*dpr);mapCv.height=Math.round(h*dpr);
+  // basiskaart: scherp genoeg voor de ingezoomde minikaart, begrensd op ~9 megapixel
+  const sb=Math.round(clamp(st.width*.3*dpr/VIEWU,1,Math.sqrt(9e6/(W*H)))*10)/10,names=!!(game&&game.niveau.namen),key=SETK+'|'+names+'|'+sb;
+  if(key!==mapKey){mapKey=key;mapBase=document.createElement('canvas');mapBase.width=Math.round(W*sb);mapBase.height=Math.round(H*sb);drawSchoolMap(mapBase.getContext('2d'),sb,names)}
+  $('mapwrap').classList.toggle('big',mapBig);$('mapwrap').classList.toggle('radar',RADAR&&!mapBig);$('maphint').hidden=mapBig||isTouch;
+}
+function drawHint(c,it,u){ // doel knippert op de kaart; u = 1 schermpixel in kaarteenheden
+  c.fillStyle='rgba(255,60,0,.55)';c.strokeStyle='#ff3c00';c.lineWidth=Math.max(5,4*u);c.lineCap=c.lineJoin='round';
+  if(it.kind==='land'){c.fill(ctyP[it.code]);c.lineWidth=2;c.stroke(ctyP[it.code]);if(CFG.klein.includes(it.code)){const l=GEO.labels[it.code];c.beginPath();c.arc(l[0],l[1],16,0,7);c.stroke()}}
+  else if(it.kind==='gebied'){c.fill(regP[it.code]);c.lineWidth=2;c.stroke(regP[it.code])}
+  else if(it.kind==='stad'){const p=GEO.cities[it.code];c.lineWidth=Math.max(3,3*u);c.beginPath();c.arc(p[0],p[1],Math.max(12,9*u),0,7);c.stroke()}
+  else if(it.kind==='river')rivP[it.code].forEach(p=>c.stroke(p));
+  else if(it.kind==='berg'){c.lineWidth=12;c.globalAlpha=.6;c.beginPath();GEO.mts[it.code].forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.globalAlpha=1}
+  else if(it.kind==='sea'){c.lineWidth=Math.max(3,3*u);GEO.seas[it.code].slice(0,3).forEach(p=>{c.beginPath();c.arc(p[0],p[1],Math.max(14,9*u),0,7);c.stroke()})}
+}
+// Radareffect over de minikaart: gedimde kaart met radartint, sweep met nagloei (conic-gradient, geen per-pixel werk),
+// ringen zonder afstandslabels, kruisdraden, scanlines en N op de rand.
+let scanPat=null,scanD=0;
+function radarFx(c,cw,ch,d,time){
+  const cx=cw/2,cy=ch/2,R=cw/2,a=(time*Math.PI*2/2.8)%(Math.PI*2);
+  c.save();c.setTransform(1,0,0,1,0,0);
+  if(c.createConicGradient){
+    let g=c.createConicGradient(a,cx,cy); // 0 = vlak vóór de straal (langst geleden geraakt), 1 = net geraakt
+    g.addColorStop(0,'rgba(3,44,26,.56)');g.addColorStop(.25,'rgba(3,44,26,.56)');g.addColorStop(.72,'rgba(3,44,26,.3)');g.addColorStop(1,'rgba(3,44,26,0)');
+    c.fillStyle=g;c.fillRect(0,0,cw,ch);
+    g=c.createConicGradient(a,cx,cy);g.addColorStop(0,'rgba(60,255,130,0)');g.addColorStop(.9,'rgba(60,255,130,0)');g.addColorStop(1,'rgba(60,255,130,.2)');
+    c.globalCompositeOperation='lighter';c.fillStyle=g;c.fillRect(0,0,cw,ch);c.globalCompositeOperation='source-over';
+  }else{c.fillStyle='rgba(3,44,26,.36)';c.fillRect(0,0,cw,ch)}
+  c.strokeStyle='rgba(200,255,220,.95)';c.lineWidth=1.6*d;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);c.stroke();
+  c.strokeStyle='rgba(120,255,175,.6)';c.lineWidth=d;c.beginPath();
+  for(let k=1;k<=3;k++){const r=R*k/3-(k===3?d:0);c.moveTo(cx+r,cy);c.arc(cx,cy,r,0,Math.PI*2)}
+  c.moveTo(0,cy);c.lineTo(cw,cy);c.moveTo(cx,0);c.lineTo(cx,ch);
+  for(let k=0;k<36;k++){const t=k*Math.PI/18,r0=R*(k%3?.965:.93);c.moveTo(cx+Math.cos(t)*r0,cy+Math.sin(t)*r0);c.lineTo(cx+Math.cos(t)*R,cy+Math.sin(t)*R)}
+  c.stroke();
+  if(!scanPat||scanD!==d){scanD=d;const p=document.createElement('canvas');p.width=1;p.height=Math.round(3*d);const q=p.getContext('2d');q.fillStyle='rgba(0,20,10,.2)';q.fillRect(0,0,1,Math.max(1,Math.round(d)));scanPat=c.createPattern(p,'repeat')}
+  c.fillStyle=scanPat;c.fillRect(0,0,cw,ch);
+  const v=c.createRadialGradient(cx,cy,R*.62,cx,cy,R);v.addColorStop(0,'rgba(0,16,10,0)');v.addColorStop(1,'rgba(0,16,10,.5)');c.fillStyle=v;c.fillRect(0,0,cw,ch);
+  const f=Math.round(11*d);c.fillStyle='rgba(4,20,14,.9)';c.beginPath();c.arc(cx,f*1.05,f*.85,0,7);c.fill();
+  c.fillStyle='#ffd23e';c.font='700 '+f+'px ui-monospace,Menlo,monospace';c.textAlign='center';c.textBaseline='middle';c.fillText('N',cx,f*1.1);
+  c.restore();
+}
+function drawMap(time){
+  if(!mapBase)return;const c=mctx,cw=mapCv.width,ch=mapCv.height,d=mapDpr;
+  // minikaart: uitsnede rond de heli (heli in het midden, noord boven); grote kaart: alles
+  const s=mapBig?cw/W:cw/VIEWU,ox=mapBig?0:cw/2-heli.x*s,oy=mapBig?0:ch/2-heli.y*s,u=d/s;
+  c.setTransform(1,0,0,1,0,0);
+  if(!mapBig){c.fillStyle='#7ea9c4';c.fillRect(0,0,cw,ch);c.strokeStyle='rgba(255,255,255,.25)';c.lineWidth=d;c.beginPath();   // buiten de kaart: leeg, graadnet loopt door
+    for(let x=((ox%(50*s))+50*s)%(50*s);x<cw;x+=50*s){c.moveTo(x,0);c.lineTo(x,ch)}for(let y=((oy%(50*s))+50*s)%(50*s);y<ch;y+=50*s){c.moveTo(0,y);c.lineTo(cw,y)}c.stroke()}
+  c.setTransform(s,0,0,s,ox,oy);c.imageSmoothingQuality='high';c.drawImage(mapBase,0,0,W,H);
+  const radar=RADAR&&!mapBig;if(radar)radarFx(c,cw,ch,d,time); // hint, spoor en heli komen er daarna helder overheen
+  if(game&&game.hint&&(time*3|0)%2===0)drawHint(c,game.target,u);
+  const tr=heli.trail;if(tr.length>1){c.strokeStyle='rgba(176,20,60,.85)';c.lineWidth=1.6*u;c.setLineDash([4*u,3*u]);c.beginPath();tr.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.lineTo(heli.x,heli.y);c.stroke();c.setLineDash([])}
+  const k=(mapBig?8:9)*u;
+  c.translate(heli.x,heli.y);c.rotate(heli.phi);c.beginPath();c.moveTo(0,-k*1.3);c.lineTo(k*.8,k);c.lineTo(0,k*.5);c.lineTo(-k*.8,k);c.closePath();
+  c.fillStyle='#ff2e2e';c.fill();c.lineWidth=k*.24;c.strokeStyle='#fff';c.stroke();c.lineWidth=k*.1;c.strokeStyle='#000';c.stroke();
+  if(radar)return;
+  // kompas
+  c.setTransform(d,0,0,d,0,0);const r=mapBig?15:11,kx=r+7,ky=r+7;
+  c.fillStyle='rgba(36,21,63,.88)';c.strokeStyle='#ffd23e';c.lineWidth=1.5;c.beginPath();c.arc(kx,ky,r,0,7);c.fill();c.stroke();
+  c.fillStyle='#ff2e88';c.beginPath();c.moveTo(kx,ky-r+2);c.lineTo(kx+r*.32,ky);c.lineTo(kx-r*.32,ky);c.fill();
+  c.fillStyle='#fff';c.beginPath();c.moveTo(kx,ky+r-2);c.lineTo(kx+r*.32,ky);c.lineTo(kx-r*.32,ky);c.fill();
+  c.fillStyle='#ffd23e';c.font='700 '+(r*.8)+'px ui-monospace,Menlo,monospace';c.textAlign='center';c.fillText('N',kx,ky+r*2+1);
+}
+function toggleMap(){mapBig=!mapBig;layoutMap();sfx('blip')}
+
+/* ================= Spel ================= */
+let state='load',game=null,modeK=store.get('mode','arcade'),scores=store.get('scores',{});
+const ARCADE_START=75,RUSTIG_N=10,particles=[];let flash=0,attractT=0;
+const scoreKey=()=>game.niveau.id+'|'+game.mode;
+function show(id){['load','title','menu','pause','over'].forEach(s=>$(s).hidden=s!==id);$('hud').hidden=!(state==='play'||state==='pause');$('touch').hidden=!(isTouch&&state==='play')}
+function banner(txt,sub,cls,dur){const b=$('banner');b.hidden=false;b.className='sh pop '+cls;b.innerHTML=txt+(sub?'<small>'+sub+'</small>':'');void b.offsetWidth;game.bannerT=dur}
+function startGame(niveau){
+  audioInit();setMusic(true);$('banner').hidden=true;
+  game={niveau,mode:modeK,time:ARCADE_START,score:0,good:0,streak:0,best:0,done:0,bag:[],prev:null,target:null,qT:0,hint:false,hintAt:20,dist:0,hard:[],land:null,bannerT:0,trailT:0,lowBeep:0};
+  heli.x=W*.46;heli.y=H*.56;heli.phi=0;heli.spd=0;heli.yaw=0;heli.agl=heli.aglT=4.5;heli.alt=groundAt(heli.x,heli.y)+4.5;heli.trail=[[heli.x,heli.y]];
+  cam.h=heli.alt+CAMUP;mapBig=false;state='play';show(null);layoutMap();
+  $('sTimeBox').firstChild.textContent=game.mode==='arcade'?'TIJD ':'OPDRACHT ';
+  nextMission();updateHud();
+}
+function nextMission(){
+  const pool=ITEMS.filter(i=>game.niveau.cats.includes(i.cat));
+  if(!game.bag.length){game.bag=shuffle(pool);if(game.bag.length>1&&game.bag[0]===game.prev)game.bag.push(game.bag.shift())}
+  for(let k=0;k<game.bag.length&&isHit(game.bag[0],heli.x,heli.y);k++)game.bag.push(game.bag.shift()); // niet beginnen bovenop het doel
+  const it=game.bag.shift();game.target=game.prev=it;game.qT=0;game.hint=false;game.wrongHere=false;
+  const c=centerOf(it);game.dist=Math.hypot(c[0]-heli.x,c[1]-heli.y);game.hintAt=14+game.dist/CRUISE*1.6;
+  $('mWord').textContent=('VLIEG NAAR '+wordFor(it)).trim();$('mName').textContent=it.name.toUpperCase();
+}
+function pointsNow(){let p=Math.max(20,Math.round(100*(1-game.qT/(game.hintAt*2))));if(game.hint)p=Math.round(p/2);return p}
+function judge(){
+  const it=game.target;
+  if(isHit(it,heli.x,heli.y)){
+    const mult=Math.min(5,game.streak+1),p=pointsNow()*mult;game.score+=p;game.good++;game.done++;game.streak++;game.best=Math.max(game.best,game.streak);
+    let sub='+'+p+' PUNTEN'+(mult>1?' (x'+mult+')':'');
+    if(game.mode==='arcade'){const b=Math.round(10+game.dist/CRUISE*1.25);game.time=Math.min(99,game.time+b);sub+=' · +'+b+' SEC'}
+    banner(['GOED ZO!','TOP!','RAAK!','KLOPT!'][Math.random()*4|0],it.name.toUpperCase()+' · '+sub,'good',1.5);sfx('good');flash=.5;
+    const kl=['#7dff8a','#ffd23e','#ff7ad9','#8fe9ff','#fff'];for(let i=0;i<60;i++)particles.push({x:RW/2,y:RH*.55,vx:(Math.random()-.5)*260,vy:-60-Math.random()*200,c:kl[i%5],t:1.2+Math.random()*.6});
+    game.land.next=true;
+  }else{
+    const got=identify(heli.x,heli.y,ITEMS);game.streak=0;game.wrongHere=true;if(!game.hard.includes(it))game.hard.push(it);
+    if(game.mode==='arcade')game.time=Math.max(0,game.time-5);
+    const wat=got&&got!==it?'DIT IS '+got.name.toUpperCase()+'.':onLand(heli.x,heli.y)?'DIT HOORT NIET BIJ DE TOETS.':'HIER LIGT HET NIET.';
+    banner(wat,'ZOEK '+it.name.toUpperCase()+'!','bad',2);sfx('bad');
+  }
+  updateHud();
+}
+function endGame(){
+  state='over';setMusic(false);$('banner').hidden=true;sfx('over');if(rotG)rotG.gain.value=0;
+  const key=scoreKey(),list=scores[key]||[],top=game.score>0&&(list.length<5||game.score>list[list.length-1].score);
+  const o=$('over');
+  const hard=game.hard.length?'<div class="lbl">DEZE WAREN LASTIG</div><ul>'+game.hard.slice(0,6).map(i=>'<li>'+i.name.toUpperCase()+'</li>').join('')+'</ul>':'<div class="tag">ALLES IN ÉÉN KEER GOED!</div>';
+  o.innerHTML='<div class="h sh">'+(game.mode==='arcade'?'TIJD IS OP!':'GELAND!')+'</div><div class="big sh">'+game.score+'</div><div class="tag">'+game.good+' GOED · LANGSTE REEKS '+game.best+'</div>'+hard+'<div id="oBody"></div>';
+  show('over');
+  const body=$('oBody');
+  const table=(me)=>{const l=scores[key]||[];body.innerHTML='<div class="lbl" style="margin-top:calc(var(--u)*3)">TOPSCORES</div>'+(l.length?'<table>'+l.map((s,i)=>'<tr><td'+(i===me?' class="me"':'')+'>'+(i+1)+'.</td><td'+(i===me?' class="me"':'')+'>'+s.naam+'</td><td'+(i===me?' class="me"':'')+'>'+s.score+'</td></tr>').join('')+'</table>':'<div class="tag">NOG GEEN SCORES</div>')+'<div class="row" style="margin-top:calc(var(--u)*4)"><button class="b go" id="oAgain">NOG EEN KEER</button><button class="b" id="oMenu">MENU</button></div>';
+    $('oAgain').onclick=()=>startGame(game.niveau);$('oMenu').onclick=openMenu;$('oAgain').focus()};
+  if(!top)return table(-1);
+  // arcade-initialen
+  const ini=(store.get('ini','AAA')+'AAA').slice(0,3).split('');let pos=0;
+  const draw=()=>{body.innerHTML='<div class="lbl" style="margin-top:calc(var(--u)*3)">NIEUWE TOPSCORE! JE LETTERS:</div><div id="ini">'+ini.map((ch,i)=>'<div class="s'+(i===pos?' on':'')+'"><button data-i="'+i+'" data-d="1">▲</button><b>'+ch+'</b><button data-i="'+i+'" data-d="-1">▼</button></div>').join('')+'</div><div class="row" style="margin-top:calc(var(--u)*4)"><button class="b go" id="iOk">OK</button></div>';
+    body.querySelectorAll('#ini button').forEach(b=>b.onclick=()=>{pos=+b.dataset.i;spin(+b.dataset.d)});$('iOk').onclick=ok};
+  const spin=d=>{ini[pos]=String.fromCharCode((ini[pos].charCodeAt(0)-65+d+26)%26+65);sfx('blip');draw()};
+  const ok=()=>{iniKey=null;const naam=ini.join('');store.set('ini',naam);const l=scores[key]||[];const e={naam,score:game.score};l.push(e);l.sort((a,b)=>b.score-a.score);scores[key]=l.slice(0,5);store.set('scores',scores);sfx('good');table(scores[key].indexOf(e))};
+  iniKey=e=>{if(e.key==='Enter'){ok()}else if(e.key==='ArrowUp')spin(1);else if(e.key==='ArrowDown')spin(-1);else if(e.key==='ArrowLeft'||e.key==='Backspace'){pos=Math.max(0,pos-1);draw()}else if(e.key==='ArrowRight'){pos=Math.min(2,pos+1);draw()}
+    else if(/^[a-zA-Z]$/.test(e.key)){ini[pos]=e.key.toUpperCase();pos=Math.min(2,pos+1);sfx('blip');draw()}};
+  draw();
+}
+let iniKey=null;
+function updateHud(){
+  $('sScore').textContent=game.score;$('sStreak').textContent='x'+Math.min(5,game.streak+1);
+  if(game.mode==='arcade'){$('sTime').textContent=Math.ceil(game.time);$('sTimeBox').classList.toggle('low',game.time<=10)}
+  else{$('sTime').textContent=Math.min(RUSTIG_N,game.done+1)+'/'+RUSTIG_N;$('sTimeBox').classList.remove('low')}
+}
+function stepGame(dt,time){
+  const L=game.land;
+  const ctl={turn:L?0:input.turn,thr:L?0:input.thr,up:L?0:input.up,turbo:input.turbo,brake:!!L,land:L&&L.ph!=='up'?(onLand(heli.x,heli.y)?.25:.9):null};
+  flyHeli(dt,ctl);
+  if(L){L.t+=dt;
+    if(L.ph==='down'&&L.t>.75){L.ph='wait';L.t=0;judge()}
+    else if(L.ph==='wait'&&L.t>(L.next?1.2:1)){L.ph='up';L.t=0;
+      if(L.next){if(game.mode==='rustig'&&game.done>=RUSTIG_N){game.land=null;return endGame()}nextMission();updateHud()}}
+    else if(L.ph==='up'&&L.t>.35)game.land=null;
+  }else{
+    game.qT+=dt;
+    if(!game.hint&&game.qT>game.hintAt){game.hint=true;if(!game.hard.includes(game.target))game.hard.push(game.target);banner('HINT!',isTouch?'TIK OP DE KAART: HET DOEL KNIPPERT':'DRUK OP M: HET DOEL KNIPPERT OP DE KAART','info',2.6);sfx('hint')}
+    if(game.mode==='arcade'){game.time-=dt;
+      if(game.time<=10&&Math.ceil(game.time)!==game.lowBeep){game.lowBeep=Math.ceil(game.time);sfx('blip2')}
+      if(game.time<=0){game.time=0;updateHud();return endGame()}}
+  }
+  game.trailT+=dt;if(game.trailT>.35){game.trailT=0;heli.trail.push([heli.x,heli.y]);if(heli.trail.length>500)heli.trail.shift()}
+  if(game.bannerT>0){game.bannerT-=dt;if(game.bannerT<=0)$('banner').hidden=true}
+  $('gSpd').textContent=Math.round(Math.abs(heli.spd)*6);$('gAlt').textContent=Math.round(heli.agl*30);
+  if(game.mode==='arcade')$('sTime').textContent=Math.ceil(game.time),$('sTimeBox').classList.toggle('low',game.time<=10);
+}
+function tryLand(){if(state!=='play'||game.land)return;game.land={ph:'down',t:0,next:false};sfx('land')}
+function attract(dt,time){ // automatische vlucht achter titel/menu
+  attractT+=dt;const cx=W*.5-heli.x,cy=H*.5-heli.y,far=Math.hypot(cx,cy)>Math.min(W,H)*.36;
+  let turn=Math.sin(attractT*.23)*.35;
+  if(far){const want=Math.atan2(cx,-cy);let d=want-heli.phi;d=Math.atan2(Math.sin(d),Math.cos(d));turn=clamp(d,-.6,.6)}
+  heli.aglT=6;flyHeli(dt,{turn,thr:heli.spd<26?1:0,up:0,turbo:false});
+}
+
+/* ================= Menu ================= */
+function openMenu(){
+  state='menu';setMusic(false);iniKey=null;if(game){game=null}show('menu');
+  const sets=$('mSets');sets.innerHTML='';
+  for(const k in SETS){const b=document.createElement('button');b.className='b';b.textContent=SETS[k].titel;b.setAttribute('aria-pressed',k===SETK);b.onclick=()=>{if(k===SETK)return;store.set('set',k);loadSet(k,openMenu)};sets.appendChild(b)}
+  const modes=$('mModes');modes.innerHTML='';
+  [['arcade','ARCADE (MET KLOK)'],['rustig','RUSTIG (GEEN KLOK)']].forEach(([k,n])=>{const b=document.createElement('button');b.className='b';b.textContent=n;b.setAttribute('aria-pressed',k===modeK);b.onclick=()=>{modeK=k;store.set('mode',k);openMenu()};modes.appendChild(b)});
+  const lv=$('levels');lv.innerHTML='';
+  CFG.niveaus.forEach((nv,i)=>{const l=scores[nv.id+'|'+modeK]||[];const b=document.createElement('button');b.className='b';
+    b.innerHTML='<span>'+(i+1)+'. '+nv.naam.toUpperCase()+'</span><small>'+(l.length?'TOP: '+l[0].naam+' '+l[0].score:'NOG GEEN SCORE')+'</small>';b.onclick=()=>startGame(nv);lv.appendChild(b)});
+  lv.firstChild.focus();
+}
+function loadSet(k,then){state='load';show('load');setTimeout(()=>{useSet(k);const t0=performance.now();buildWorld();window.__dbg.buildMs=performance.now()-t0;
+  heli.x=W*.3;heli.y=H*.62;heli.phi=1;heli.spd=20;heli.alt=groundAt(heli.x,heli.y)+6;heli.trail=[];cam.h=heli.alt+CAMUP;then()},40)}
+function pause(on){if(on&&state==='play'){state='pause';show('pause');$('pGo').focus();if(rotG)rotG.gain.value=0;bgm.pause()}else if(!on&&state==='pause'){state='play';show(null);last=performance.now();if(musicOn)bgmPlay()}}
+
+/* ================= Invoer ================= */
+const isTouch=matchMedia('(pointer:coarse)').matches;
+addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)&&state!=='menu'&&state!=='over')e.preventDefault();
+  if(e.repeat){return}
+  audioInit();keys[e.code]=true;
+  if(state==='title'&&(e.key===' '||e.key==='Enter')){e.preventDefault();sfx('blip');return openMenu()}
+  if(state==='over'&&iniKey){if(e.key.startsWith('Arrow')||e.key==='Enter')e.preventDefault();return iniKey(e)}
+  if(state==='menu'||state==='over'){const bs=[...document.querySelectorAll('#'+state+' button')],i=bs.indexOf(document.activeElement);
+    if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();bs[(i+1)%bs.length].focus()}else if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();bs[(i-1+bs.length)%bs.length].focus()}
+    if(e.key==='Escape'&&state==='over')openMenu();return}
+  if(state==='play'){
+    if(e.code==='Space'){tryLand()}else if(e.code==='KeyM')toggleMap();else if(e.code==='KeyP')pause(true);else if(e.key==='Escape')openMenu();
+  }else if(state==='pause'){if(e.code==='KeyP'||e.key==='Escape')pause(false)}
+});
+addEventListener('keyup',e=>{keys[e.code]=false});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;pause(true)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(true)});
+function readInput(){
+  input.turn=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0)+stick.x;input.thr=(keys.ArrowUp?1:0)-(keys.ArrowDown?1:0)+stick.y;
+  input.turn=clamp(input.turn,-1,1);input.thr=clamp(input.thr,-1,1);
+  input.up=(keys.KeyW?1:0)-(keys.KeyS?1:0)+tb.up;input.turbo=!!(keys.ShiftLeft||keys.ShiftRight)||tb.turbo;
+}
+const stick={x:0,y:0},tb={up:0,turbo:false};
+(function touchUI(){
+  const st=$('stick'),kn=$('knob');let id=null;
+  const mv=e=>{const r=st.getBoundingClientRect();let x=(e.clientX-r.left)/r.width*2-1,y=(e.clientY-r.top)/r.height*2-1;const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}
+    stick.x=Math.abs(x)<.15?0:x;stick.y=Math.abs(y)<.2?0:-y;kn.style.transform='translate('+x*90+'%,'+y*90+'%)'};
+  st.addEventListener('pointerdown',e=>{audioInit();id=e.pointerId;st.setPointerCapture(id);mv(e)});
+  st.addEventListener('pointermove',e=>{if(e.pointerId===id)mv(e)});
+  const up=e=>{if(e.pointerId!==id)return;id=null;stick.x=stick.y=0;kn.style.transform=''};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);
+  const hold=(el,on,off)=>{el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();on()});['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,off))};
+  hold($('tTurbo'),()=>tb.turbo=true,()=>tb.turbo=false);hold($('tUp'),()=>tb.up=1,()=>tb.up=0);hold($('tDown'),()=>tb.up=-1,()=>tb.up=0);
+  $('tLand').addEventListener('pointerdown',e=>{e.preventDefault();tryLand()});
+  $('tPause').addEventListener('click',()=>pause(true));
+})();
+addEventListener('pointerdown',audioInit);
+$('mapwrap').onclick=toggleMap;
+$('mute').onclick=$('mSound').onclick=()=>{audioInit();setMute(!muted)};
+$('title').onclick=()=>{audioInit();sfx('blip');openMenu()};
+$('pGo').onclick=()=>pause(false);$('pMenu').onclick=openMenu;
+
+/* ================= Hoofdlus ================= */
+function resize(){const st=$('stage'),w=Math.min(innerWidth,innerHeight*16/9),h=w*9/16;st.style.width=w+'px';st.style.height=h+'px';st.style.setProperty('--u',h/216+'px');if(GEO)layoutMap();if(isTouch&&innerHeight>innerWidth)pause(true)}
+addEventListener('resize',resize);
+let last=0;const perf={ms:0,n:0};
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=clamp((now-last)/1000||0,0,.05),time=now/1000;last=now;
+  if(state==='load'||state==='pause')return;
+  if(state==='play'){readInput();stepGame(dt,time)}else attract(dt,time);
+  const t0=performance.now();
+  renderWorld(time);drawHeli(time);
+  if(particles.length){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.t-=dt;if(p.t<=0){particles.splice(i,1);continue}p.vy+=320*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;sctx.fillStyle=p.c;sctx.fillRect(p.x|0,p.y|0,3,2)}}
+  if(flash>0){sctx.fillStyle='rgba(255,255,255,'+flash+')';sctx.fillRect(0,0,RW,RH);flash-=dt*1.6}
+  if(state==='play')drawMap(time);
+  perf.ms+=performance.now()-t0;perf.n++;
+  if(AC&&rotG){const on=state==='play';rotG.gain.value=on?.5:.12;rotL.frequency.value=12+Math.abs(heli.spd)*.13;rotF.frequency.value=230+Math.abs(heli.spd)*5;music()}
+}
+/* debug-hook voor tests */
+window.__dbg={heli,get game(){return game},get state(){return state},get items(){return ITEMS},get bgmOK(){return bgmOK},get musicOn(){return musicOn},isHit,identify,centerOf,wordFor,onLand,groundAt,
+  goto(x,y){heli.x=x;heli.y=y;heli.spd=0;heli.alt=groundAt(x,y)+heli.agl},land:tryLand,perf,
+  frameMs(){const v=perf.ms/Math.max(1,perf.n);perf.ms=perf.n=0;return v},buildMs:0};
+resize();setMute(muted);buildSky();buildSprites();
+loadSet(SETK,()=>{state='title';show('title');layoutMap()});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
