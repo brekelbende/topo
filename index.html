@@ -38,7 +38,8 @@ body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,M
 #mapwrap canvas{display:block}
 #mapwrap.radar,#mapwrap.radar canvas{border-radius:50%}#mapwrap.radar{background:#04140e}
 #maphint{position:absolute;left:0;right:0;top:calc(var(--u)*-8.5);text-align:center;font-size:calc(var(--u)*3.2);color:#ffd23e;line-height:1}
-#mute{position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*46);pointer-events:auto;font:inherit;font-size:calc(var(--u)*3.6);background:rgba(16,8,40,.7);color:#8fe9ff;border:calc(var(--u)*.5) solid #8fe9ff;padding:calc(var(--u)*1.6) calc(var(--u)*2.4);cursor:pointer}
+#mute,#fs{position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*46);pointer-events:auto;font:inherit;font-size:calc(var(--u)*3.6);background:rgba(16,8,40,.7);color:#8fe9ff;border:calc(var(--u)*.5) solid #8fe9ff;padding:calc(var(--u)*1.6) calc(var(--u)*2.4);cursor:pointer}
+#fs{top:calc(var(--u)*58)}
 /* touch */
 #touch{pointer-events:none}
 #stick{position:absolute;left:calc(var(--u)*6);bottom:calc(var(--u)*22);width:calc(var(--u)*56);height:calc(var(--u)*56);border-radius:50%;border:calc(var(--u)*.8) solid rgba(255,255,255,.5);background:rgba(255,255,255,.08);pointer-events:auto}
@@ -94,6 +95,7 @@ button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
       <div class="r">REEKS <b id="sStreak">x1</b></div>
     </div>
     <button id="mute" title="Geluid aan/uit">GELUID AAN</button>
+    <button id="fs" title="Volledig scherm aan/uit (F)">VOL SCHERM</button>
     <div id="gauge" class="sh">KM/U <b id="gSpd">0</b><br>HOOGTE <b id="gAlt">0</b></div>
     <div id="banner" class="sh" hidden></div>
     <div id="mapwrap" title="Kaart groter/kleiner (M)"><canvas id="map"></canvas><div id="maphint" class="sh">M = KAART</div></div>
@@ -122,8 +124,8 @@ button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
     <div><div class="lbl">KAART</div><div class="row" id="mSets"></div></div>
     <div><div class="lbl">STAND</div><div class="row" id="mModes"></div></div>
     <div id="levels"></div>
-    <div class="row"><button class="b" id="mPilot">PILOOT</button><button class="b" id="mSound">GELUID: AAN</button></div>
-    <div class="keys">PIJLTJES = VLIEGEN · W/S = HOGER/LAGER · SHIFT = TURBO<br>SPATIE = LANDEN · M = KAART · P = PAUZE · ESC = MENU</div>
+    <div class="row"><button class="b" id="mPilot">PILOOT</button><button class="b" id="mSound">GELUID: AAN</button><button class="b" id="mFs">VOLLEDIG SCHERM</button></div>
+    <div class="keys">PIJLTJES = VLIEGEN · W/S = HOGER/LAGER · SHIFT = TURBO<br>SPATIE = LANDEN · M = KAART · P = PAUZE · ESC = MENU<span id="kFs"> · F = VOLLEDIG SCHERM</span></div>
   </div>
   <div class="screen dim" id="pause" hidden><div class="h sh">PAUZE</div><div class="row"><button class="b go" id="pGo">VERDER</button><button class="b" id="pMenu">MENU</button></div></div>
   <div class="screen dim" id="over" hidden></div>
@@ -877,7 +879,8 @@ addEventListener('keydown',e=>{
     else if(j>=0&&e.key==='ArrowLeft')t=sw[(j-1+sw.length)%sw.length];
     if(t){e.preventDefault();t.focus()}
     return}
-  if(state==='menu'||state==='over'){const bs=[...document.querySelectorAll('#'+state+' button')],i=bs.indexOf(document.activeElement);
+  if(e.code==='KeyF'&&fsOK&&!e.ctrlKey&&!e.metaKey&&!e.altKey){e.preventDefault();return toggleFS()}
+  if(state==='menu'||state==='over'){const bs=[...document.querySelectorAll('#'+state+' button:not([hidden])')],i=bs.indexOf(document.activeElement);
     if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();bs[(i+1)%bs.length].focus()}else if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();bs[(i-1+bs.length)%bs.length].focus()}
     if(e.key==='Escape'&&state==='over')openMenu();return}
   if(state==='play'){
@@ -908,6 +911,13 @@ const stick={x:0,y:0},tb={up:0,turbo:false};
 addEventListener('pointerdown',audioInit);
 $('mapwrap').onclick=toggleMap;
 $('mute').onclick=$('mSound').onclick=()=>{audioInit();setMute(!muted)};
+/* Volledig scherm (Fullscreen API, webkit-prefix als terugval). Niet ondersteund (bv. iPhone-Safari): knoppen weg, F doet niets. */
+const fsEl=document.documentElement,fsReq=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen,fsExit=document.exitFullscreen||document.webkitExitFullscreen,fsOK=!!(fsReq&&fsExit);
+const fsOn=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+function toggleFS(){if(!fsOK)return;if(document.activeElement&&document.activeElement.id==='fs')document.activeElement.blur();try{const r=fsOn()?fsExit.call(document):fsReq.call(fsEl);if(r&&r.catch)r.catch(()=>{})}catch(e){}}
+function fsSync(){const on=fsOn();$('mFs').textContent=on?'VENSTER':'VOLLEDIG SCHERM';$('fs').textContent=on?'VENSTER':'VOL SCHERM';resize()}
+if(fsOK){$('fs').onclick=$('mFs').onclick=toggleFS;document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync)}
+else{$('fs').hidden=$('mFs').hidden=$('kFs').hidden=true}
 $('title').onclick=()=>{audioInit();sfx('blip');openPilot()};
 $('pOk').onclick=pilotDone;$('mPilot').onclick=openPilot;
 $('pGo').onclick=()=>pause(false);$('pMenu').onclick=openMenu;
