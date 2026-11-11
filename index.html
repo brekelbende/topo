@@ -38,6 +38,7 @@ body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,M
 @keyframes blink{50%{opacity:0}}
 #mapwrap{position:absolute;right:calc(var(--u)*6);bottom:calc(var(--u)*6);border:calc(var(--u)*1.2) solid #24153f;background:#7ea9c4;pointer-events:auto;cursor:pointer;line-height:0;box-shadow:0 0 0 calc(var(--u)*.7) #ffd23e,0 0 0 calc(var(--u)*1.5) #ff2e88,0 0 0 calc(var(--u)*2.2) #24153f,calc(var(--u)*3.4) calc(var(--u)*3.4) 0 calc(var(--u)*1) rgba(0,0,0,.45)}
 #mapwrap.big{right:auto;bottom:auto;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 calc(var(--u)*.7) #ffd23e,0 0 0 calc(var(--u)*1.5) #ff2e88,0 0 0 calc(var(--u)*2.2) #24153f,0 0 0 100vmax rgba(8,4,24,.6)}
+@media (pointer:coarse){#mapwrap:not(.big){bottom:calc(var(--u)*34)}}
 #mapwrap canvas{display:block}
 #mapwrap.radar,#mapwrap.radar canvas{border-radius:50%}#mapwrap.radar{background:#04140e}
 #maphint{position:absolute;left:0;right:0;top:calc(var(--u)*-8.5);text-align:center;font-size:calc(var(--u)*3.2);color:#ffd23e;line-height:1}
@@ -48,10 +49,9 @@ body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,M
 #stick{position:absolute;left:calc(var(--u)*6);bottom:calc(var(--u)*22);width:calc(var(--u)*56);height:calc(var(--u)*56);border-radius:50%;border:calc(var(--u)*.8) solid rgba(255,255,255,.5);background:rgba(255,255,255,.08);pointer-events:auto}
 #knob{position:absolute;left:50%;top:50%;width:36%;height:36%;margin:-18% 0 0 -18%;border-radius:50%;background:rgba(255,210,62,.85)}
 .tb{position:absolute;pointer-events:auto;font:inherit;font-size:calc(var(--u)*4);color:#fff;background:rgba(16,8,40,.7);border:calc(var(--u)*.7) solid #fff;padding:calc(var(--u)*3);min-width:calc(var(--u)*24)}
-#tLand{left:calc(var(--u)*76);bottom:calc(var(--u)*24);border-color:#ffd23e;color:#ffd23e;font-size:calc(var(--u)*6);padding:calc(var(--u)*5)}
-#tTurbo{left:calc(var(--u)*76);bottom:calc(var(--u)*48)}#tTurbo.leeg{opacity:.35}
+#tLand{right:calc(var(--u)*60);bottom:calc(var(--u)*5);width:calc(var(--u)*50);height:calc(var(--u)*20);box-sizing:border-box;border-color:#ffd23e;color:#ffd23e;font-size:calc(var(--u)*6);padding:0}
+#tTurbo{right:calc(var(--u)*6);bottom:calc(var(--u)*5);width:calc(var(--u)*50);height:calc(var(--u)*20);box-sizing:border-box;font-size:calc(var(--u)*5);padding:0}#tTurbo.leeg{opacity:.35}
 #tPause{left:50%;top:calc(var(--u)*5);transform:translateX(-50%);min-width:0;padding:calc(var(--u)*2.4) calc(var(--u)*4)}
-#tUp{left:calc(var(--u)*124);bottom:calc(var(--u)*48)}#tDown{left:calc(var(--u)*124);bottom:calc(var(--u)*24)}
 /* schermen */
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*5);pointer-events:auto;text-align:center}
 .dim{background:rgba(10,4,30,.62)}
@@ -107,7 +107,6 @@ button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
     <div id="stick"><div id="knob"></div></div>
     <button class="tb" id="tLand">LAND</button><button class="tb" id="tTurbo">TURBO</button>
     <button class="tb" id="tPause" aria-label="Pauze">II</button>
-    <button class="tb" id="tUp">▲</button><button class="tb" id="tDown">▼</button>
   </div>
   <div class="screen" id="load"><div class="tag">KAART WORDT GEBOUWD…</div><div class="bar"><i></i></div></div>
   <div class="screen" id="title" hidden style="justify-content:flex-start;padding-top:6%">
@@ -1090,9 +1089,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(true)
 function readInput(){
   input.turn=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0)+stick.x;input.thr=(keys.ArrowUp?1:0)-(keys.ArrowDown?1:0)+stick.y;
   input.turn=clamp(input.turn,-1,1);input.thr=clamp(input.thr,-1,1);
-  input.up=(keys.KeyW?1:0)-(keys.KeyS?1:0)+tb.up;input.turbo=!!(keys.ShiftLeft||keys.ShiftRight)||tb.turbo;
+  input.up=(keys.KeyW?1:0)-(keys.KeyS?1:0);input.turbo=!!(keys.ShiftLeft||keys.ShiftRight)||tb.turbo;
 }
-const stick={x:0,y:0},tb={up:0,turbo:false};
+const stick={x:0,y:0},tb={turbo:false};
 (function touchUI(){
   const st=$('stick'),kn=$('knob');let id=null;
   const mv=e=>{const r=st.getBoundingClientRect();let x=(e.clientX-r.left)/r.width*2-1,y=(e.clientY-r.top)/r.height*2-1;const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}
@@ -1101,7 +1100,7 @@ const stick={x:0,y:0},tb={up:0,turbo:false};
   st.addEventListener('pointermove',e=>{if(e.pointerId===id)mv(e)});
   const up=e=>{if(e.pointerId!==id)return;id=null;stick.x=stick.y=0;kn.style.transform=''};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);
   const hold=(el,on,off)=>{el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();on()});['pointerup','pointercancel','pointerleave'].forEach(n=>el.addEventListener(n,off))};
-  hold($('tTurbo'),()=>tb.turbo=true,()=>tb.turbo=false);hold($('tUp'),()=>tb.up=1,()=>tb.up=0);hold($('tDown'),()=>tb.up=-1,()=>tb.up=0);
+  hold($('tTurbo'),()=>tb.turbo=true,()=>tb.turbo=false);
   $('tLand').addEventListener('pointerdown',e=>{e.preventDefault();tryLand()});
   $('tPause').addEventListener('click',()=>pause(true));
 })();
