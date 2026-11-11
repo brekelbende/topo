@@ -27,6 +27,9 @@ body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,M
 #stats .r b{color:#ff7ad9}
 #gauge{position:absolute;left:calc(var(--u)*5);bottom:calc(var(--u)*5);font-size:calc(var(--u)*4);line-height:1.7;color:#8fe9ff}
 #gauge b{color:#fff;font-size:calc(var(--u)*6)}
+#tBar{display:inline-block;vertical-align:middle;width:calc(var(--u)*30);height:calc(var(--u)*4.4);border:calc(var(--u)*.7) solid #fff;background:rgba(16,8,40,.7);margin-left:calc(var(--u)*1)}
+#tBar i{display:block;height:100%;background:#ffd23e}
+#tBar.leeg{border-color:#ff4d6d;animation:blink .5s steps(2) infinite}#tBar.leeg i{background:#ff4d6d}
 #banner{position:absolute;left:0;right:0;top:21%;text-align:center;font-size:calc(var(--u)*11);line-height:1.3}
 #banner small{display:block;font-size:calc(var(--u)*5);margin-top:calc(var(--u)*2);color:#fff}
 #banner.good{color:#7dff8a}#banner.bad{color:#ff5d6d;font-size:calc(var(--u)*8)}#banner.info{color:#ffd23e}
@@ -46,7 +49,7 @@ body{display:grid;place-items:center;font-family:"Press Start 2P",ui-monospace,M
 #knob{position:absolute;left:50%;top:50%;width:36%;height:36%;margin:-18% 0 0 -18%;border-radius:50%;background:rgba(255,210,62,.85)}
 .tb{position:absolute;pointer-events:auto;font:inherit;font-size:calc(var(--u)*4);color:#fff;background:rgba(16,8,40,.7);border:calc(var(--u)*.7) solid #fff;padding:calc(var(--u)*3);min-width:calc(var(--u)*24)}
 #tLand{left:calc(var(--u)*76);bottom:calc(var(--u)*24);border-color:#ffd23e;color:#ffd23e;font-size:calc(var(--u)*6);padding:calc(var(--u)*5)}
-#tTurbo{left:calc(var(--u)*76);bottom:calc(var(--u)*48)}
+#tTurbo{left:calc(var(--u)*76);bottom:calc(var(--u)*48)}#tTurbo.leeg{opacity:.35}
 #tPause{left:50%;top:calc(var(--u)*5);transform:translateX(-50%);min-width:0;padding:calc(var(--u)*2.4) calc(var(--u)*4)}
 #tUp{left:calc(var(--u)*124);bottom:calc(var(--u)*48)}#tDown{left:calc(var(--u)*124);bottom:calc(var(--u)*24)}
 /* schermen */
@@ -96,7 +99,7 @@ button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
     </div>
     <button id="mute" title="Geluid aan/uit">GELUID AAN</button>
     <button id="fs" title="Volledig scherm aan/uit (F)">VOL SCHERM</button>
-    <div id="gauge" class="sh">KM/U <b id="gSpd">0</b><br>HOOGTE <b id="gAlt">0</b></div>
+    <div id="gauge" class="sh">KM/U <b id="gSpd">0</b><br>HOOGTE <b id="gAlt">0</b><br>TURBO <span id="tBar"><i></i></span></div>
     <div id="banner" class="sh" hidden></div>
     <div id="mapwrap" title="Kaart groter/kleiner (M)"><canvas id="map"></canvas><div id="maphint" class="sh">M = KAART</div></div>
   </div>
@@ -123,6 +126,7 @@ button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
     <div class="h sh">KIES JE VLUCHT</div>
     <div><div class="lbl">KAART</div><div class="row" id="mSets"></div></div>
     <div><div class="lbl">STAND</div><div class="row" id="mModes"></div></div>
+    <div><div class="lbl">MOEILIJKHEID</div><div class="row" id="mDiffs"></div></div>
     <div id="levels"></div>
     <div class="row"><button class="b" id="mPilot">PILOOT</button><button class="b" id="mSound">GELUID: AAN</button><button class="b" id="mFs">VOLLEDIG SCHERM</button></div>
     <div class="keys">PIJLTJES = VLIEGEN · W/S = HOGER/LAGER · SHIFT = TURBO<br>SPATIE = LANDEN · M = KAART · P = PAUZE · ESC = MENU<span id="kFs"> · F = VOLLEDIG SCHERM</span></div>
@@ -772,7 +776,8 @@ function flyHeli(dt,ctl){
 
 /* ================= Geluid (alles gesynthetiseerd) ================= */
 let AC=null,master=null,noiseB=null,rotG=null,rotF=null,rotL=null,musG=null,muted=store.get('mute',false),musStep=0,musNext=0,musicOn=false;
-function audioInit(){
+function audioInit(){ // wordt bij elke toets/tik aangeroepen: start (of herstart) ook de muziek
+  musicStart();
   if(AC){if(AC.state!=='running')AC.resume();return}
   try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return}
   master=AC.createGain();master.gain.value=muted?0:.55;master.connect(AC.destination);
@@ -800,13 +805,15 @@ function sfx(k){if(!AC)return;const t=AC.currentTime;
 // chiptune-loop: bas + arpeggio over vier akkoorden (Am F C G)
 const CH=[[110,[440,523,659]],[87.3,[349,440,523]],[130.8,[523,659,784]],[98,[392,494,587]]],ARP=[0,1,2,1,0,2,1,2];
 // achtergrondmuziek uit bestand; lukt laden/afspelen niet, dan neemt de chiptune het stil over
-const bgm=$('bgm');let bgmOK=true,bgmDead=false,bgmT0=0;bgm.volume=.2;
+const bgm=$('bgm');let bgmOK=true,bgmDead=false,bgmPlayed=false,bgmT0=0;bgm.volume=.2;
 function bgmFail(){bgmOK=false;try{bgm.pause()}catch(e){}}
 const bgmDie=()=>{bgmDead=true;bgmFail()};bgm.addEventListener('error',bgmDie);bgm.lastElementChild.addEventListener('error',bgmDie); // laatste <source> faalt = geen bruikbare bron
-function bgmPlay(){if(!bgmOK)return;bgmT0=performance.now();try{const p=bgm.play();if(p)p.catch(e=>{if(e&&e.name!=='AbortError')bgmFail()})}catch(e){bgmFail()}}
-function setMusic(on){musicOn=on;if(on){bgmOK=!bgmDead;if(bgmOK){try{bgm.currentTime=0}catch(e){}bgmPlay()}}else bgm.pause()}
+bgm.addEventListener('playing',()=>{bgmPlayed=true;if(!bgmDead)bgmOK=true}); // speelt: vanaf nu is een lage readyState (zoals bij de lus-naad) geen fout meer
+bgm.addEventListener('ended',()=>{if(musicOn&&state!=='pause'){try{bgm.currentTime=0}catch(e){}bgmPlay()}}); // vangnet als 'loop' het laat afweten
+function bgmPlay(){if(bgmDead)return;bgmT0=performance.now();try{const p=bgm.play();if(p)p.catch(e=>{if(e&&e.name!=='AbortError'&&e.name!=='NotAllowedError')bgmFail()})}catch(e){bgmFail()}} // NotAllowed = nog geen geldig gebaar: volgende toets/tik probeert opnieuw
+function musicStart(){musicOn=true;if(bgm.paused&&state!=='pause')bgmPlay()} // muziek loopt overal door (titel, menu, vlucht, einde); alleen PAUZE zet hem stil
 function music(){
-  if(bgmOK&&musicOn&&bgm.readyState<2&&performance.now()-bgmT0>2000)bgmFail(); // laadt niet: terugvallen
+  if(bgmOK&&musicOn&&!bgmPlayed&&!bgm.paused&&bgm.readyState<2&&performance.now()-bgmT0>2000)bgmOK=false; // laadt (nog) niet: chiptune, tot het bestand alsnog gaat spelen
   if(!AC||!musicOn||bgmOK)return;const sl=60/128/4;if(musNext<AC.currentTime)musNext=AC.currentTime+.05;
   while(musNext<AC.currentTime+.2){
     const s=musStep%64,[bass,arp]=CH[s>>4],t=musNext;
@@ -916,13 +923,17 @@ function toggleMap(){mapBig=!mapBig;layoutMap();sfx('blip')}
 
 /* ================= Spel ================= */
 let state='load',game=null,modeK=store.get('mode','arcade'),scores=store.get('scores',{});
-const ARCADE_START=75,RUSTIG_N=10,particles=[];let flash=0,attractT=0;
-const scoreKey=()=>game.niveau.id+'|'+game.mode;
+const RUSTIG_N=10,TMAX=120,particles=[];let flash=0,attractT=0;
+// moeilijkheid schaalt alleen tijd en hints: starttijd, bonustijd (x), hintmoment (x) en tijdstraf bij fout
+const DIFFS={makkelijk:{n:'MAKKELIJK',start:100,bonus:1.3,hint:.6,straf:0},normaal:{n:'NORMAAL',start:75,bonus:1,hint:1,straf:5},moeilijk:{n:'MOEILIJK',start:55,bonus:.8,hint:1.6,straf:10}};
+let diffK=DIFFS[store.get('diff')]?store.get('diff'):'normaal';
+const TURBO_SEC=6,TURBO_FILL=20,TURBO_MIN=.15; // tank: 6 s turbo, in 20 s vanzelf weer vol, na leeg pas weer aan vanaf 15%
+const sKey=(id,mode)=>id+'|'+mode+(diffK==='normaal'?'':'|'+diffK),scoreKey=()=>sKey(game.niveau.id,game.mode); // normaal houdt de oude sleutel
 function show(id){['load','title','pilot','menu','pause','over'].forEach(s=>$(s).hidden=s!==id);$('hud').hidden=!(state==='play'||state==='pause');$('touch').hidden=!(isTouch&&state==='play')}
 function banner(txt,sub,cls,dur){const b=$('banner');b.hidden=false;b.className='sh pop '+cls;b.innerHTML=txt+(sub?'<small>'+sub+'</small>':'');void b.offsetWidth;game.bannerT=dur}
 function startGame(niveau){
-  audioInit();setMusic(true);$('banner').hidden=true;
-  game={niveau,mode:modeK,time:ARCADE_START,score:0,good:0,streak:0,best:0,done:0,bag:[],prev:null,target:null,qT:0,hint:false,hintAt:20,dist:0,hard:[],land:null,bannerT:0,trailT:0,lowBeep:0};
+  audioInit();$('banner').hidden=true;
+  game={niveau,mode:modeK,diff:DIFFS[diffK],time:DIFFS[diffK].start,tank:1,tLock:false,score:0,good:0,streak:0,best:0,done:0,bag:[],prev:null,target:null,qT:0,hint:false,hintAt:20,dist:0,hard:[],land:null,bannerT:0,trailT:0,lowBeep:0};
   heli.x=W*.46;heli.y=H*.56;heli.phi=0;heli.spd=0;heli.yaw=0;heli.agl=heli.aglT=4.5;heli.alt=groundAt(heli.x,heli.y)+4.5;heli.trail=[[heli.x,heli.y]];heli.fl=0;heli.rings.length=0;
   cam.h=heli.alt+CAMUP;mapBig=false;state='play';show(null);layoutMap();
   $('sTimeBox').firstChild.textContent=game.mode==='arcade'?'TIJD ':'OPDRACHT ';
@@ -933,10 +944,10 @@ function nextMission(){
   if(!game.bag.length){game.bag=shuffle(pool);if(game.bag.length>1&&game.bag[0]===game.prev)game.bag.push(game.bag.shift())}
   for(let k=0;k<game.bag.length&&isHit(game.bag[0],heli.x,heli.y);k++)game.bag.push(game.bag.shift()); // niet beginnen bovenop het doel
   const it=game.bag.shift();game.target=game.prev=it;game.qT=0;game.hint=false;game.wrongHere=false;game.domUsed=false;
-  const c=centerOf(it);game.dist=Math.hypot(c[0]-heli.x,c[1]-heli.y);game.hintAt=14+game.dist/CRUISE*1.6;
+  const c=centerOf(it);game.dist=Math.hypot(c[0]-heli.x,c[1]-heli.y);game.hintAt=(14+game.dist/CRUISE*1.6)*game.diff.hint;
   $('mWord').textContent=('VLIEG NAAR '+wordFor(it)).trim();$('mName').textContent=it.name.toUpperCase();
 }
-function pointsNow(){let p=Math.max(20,Math.round(100*(1-game.qT/(game.hintAt*2))));if(game.hint)p=Math.round(p/2);return p}
+function pointsNow(){let p=Math.max(20,Math.round(100*(1-game.qT/(game.hintAt/game.diff.hint*2))));if(game.hint)p=Math.round(p/2);return p}
 function confetti(){const kl=['#7dff8a','#ffd23e','#ff7ad9','#8fe9ff','#fff'];for(let i=0;i<60;i++)particles.push({x:RW/2,y:RH*.55,vx:(Math.random()-.5)*260,vy:-60-Math.random()*200,c:kl[i%5],t:1.2+Math.random()*.6})}
 function plons(){ // de drijvers raken het water: witte spatten, kringen en geluid
   const y=hzc[RW>>1]+(cam.h-heli.alt)*K/CAMD+15;
@@ -946,12 +957,12 @@ function plons(){ // de drijvers raken het water: witte spatten, kringen en gelu
 function judge(){
   const it=game.target,dom=DOM[SETK],home=Math.hypot(dom.p[0]-heli.x,dom.p[1]-heli.y)<=dom.r,welkom='WELKOM THUIS'+(pilot?', '+pilot:'')+'!';
   let thuis=''; // thuisbonus bij de Domtoren: hooguit één keer per opdracht
-  if(home&&!game.domUsed){game.domUsed=true;
-    if(game.mode==='arcade'){game.time=Math.min(99,game.time+DOM_SEC);thuis='THUISBONUS +'+DOM_SEC+' SEC'}else{game.score+=DOM_PTS;thuis='THUISBONUS +'+DOM_PTS+' PUNTEN'}}
+  if(home&&!game.domUsed){game.domUsed=true;game.tank=1;game.tLock=false;
+    if(game.mode==='arcade'){game.time=Math.min(TMAX,game.time+DOM_SEC);thuis='THUISBONUS +'+DOM_SEC+' SEC'}else{game.score+=DOM_PTS;thuis='THUISBONUS +'+DOM_PTS+' PUNTEN'}}
   if(isHit(it,heli.x,heli.y)){
-    const mult=Math.min(5,game.streak+1),p=pointsNow()*mult;game.score+=p;game.good++;game.done++;game.streak++;game.best=Math.max(game.best,game.streak);
+    const mult=Math.min(5,game.streak+1),p=pointsNow()*mult;game.score+=p;game.good++;game.done++;game.streak++;game.best=Math.max(game.best,game.streak);game.tank=1;game.tLock=false;
     let sub='+'+p+' PUNTEN'+(mult>1?' (x'+mult+')':'');
-    if(game.mode==='arcade'){const b=Math.round(10+game.dist/CRUISE*1.25);game.time=Math.min(99,game.time+b);sub+=' · +'+b+' SEC'}
+    if(game.mode==='arcade'){const b=Math.round((10+game.dist/CRUISE*1.25)*game.diff.bonus);game.time=Math.min(TMAX,game.time+b);sub+=' · +'+b+' SEC'}
     banner(home?welkom:['GOED ZO!','TOP!','RAAK!','KLOPT!'][Math.random()*4|0],it.name.toUpperCase()+' · '+sub+(thuis?' · '+thuis:''),'good',home?2.2:1.5);sfx('good');flash=.5;
     confetti();
     game.land.next=true;
@@ -959,18 +970,18 @@ function judge(){
     banner(welkom,(thuis?thuis+' · ':'')+'ZOEK '+it.name.toUpperCase()+'!','info',2.4);sfx('home');if(thuis)confetti();
   }else{
     const got=identify(heli.x,heli.y,ITEMS);game.streak=0;game.wrongHere=true;if(!game.hard.includes(it))game.hard.push(it);
-    if(game.mode==='arcade')game.time=Math.max(0,game.time-5);
+    if(game.mode==='arcade')game.time=Math.max(0,game.time-game.diff.straf);
     const wat=got&&got!==it?'DIT IS '+got.name.toUpperCase()+'.':onLand(heli.x,heli.y)?'DIT HOORT NIET BIJ DE TOETS.':'HIER LIGT HET NIET.';
     banner(wat,'ZOEK '+it.name.toUpperCase()+'!','bad',2);sfx('bad');
   }
   updateHud();
 }
 function endGame(){
-  state='over';setMusic(false);$('banner').hidden=true;sfx('over');if(rotG)rotG.gain.value=0;
+  state='over';$('banner').hidden=true;sfx('over');if(rotG)rotG.gain.value=0;
   const key=scoreKey(),list=scores[key]||[],top=game.score>0&&(list.length<5||game.score>list[list.length-1].score);
   const o=$('over');
   const hard=game.hard.length?'<div class="lbl">DEZE WAREN LASTIG</div><ul>'+game.hard.slice(0,6).map(i=>'<li>'+i.name.toUpperCase()+'</li>').join('')+'</ul>':'<div class="tag">ALLES IN ÉÉN KEER GOED!</div>';
-  o.innerHTML='<div class="h sh">'+(game.mode==='arcade'?'TIJD IS OP!':'GELAND!')+'</div><div class="big sh">'+game.score+'</div><div class="tag">'+game.good+' GOED · LANGSTE REEKS '+game.best+'</div>'+hard+'<div id="oBody"></div>';
+  o.innerHTML='<div class="h sh">'+(game.mode==='arcade'?'TIJD IS OP!':'GELAND!')+'</div><div class="big sh">'+game.score+'</div><div class="tag">'+game.good+' GOED · LANGSTE REEKS '+game.best+' · '+game.diff.n+'</div>'+hard+'<div id="oBody"></div>';
   show('over');
   const body=$('oBody');
   const table=(me)=>{const l=scores[key]||[];body.innerHTML='<div class="lbl" style="margin-top:calc(var(--u)*3)">'+(me>=0?'NIEUWE TOPSCORE!':'TOPSCORES')+'</div>'+(l.length?'<table>'+l.map((s,i)=>'<tr><td'+(i===me?' class="me"':'')+'>'+(i+1)+'.</td><td'+(i===me?' class="me"':'')+'>'+s.naam+'</td><td'+(i===me?' class="me"':'')+'>'+s.score+'</td></tr>').join('')+'</table>':'<div class="tag">NOG GEEN SCORES</div>')+'<div class="row" style="margin-top:calc(var(--u)*4)"><button class="b go" id="oAgain">NOG EEN KEER</button><button class="b" id="oMenu">MENU</button></div>';
@@ -985,7 +996,10 @@ function updateHud(){
 }
 function stepGame(dt,time){
   const L=game.land,wtr=!!L&&L.ph!=='up'&&onWater(heli.x,heli.y); // landen op zee, meer of rivier: op de drijvers
-  const ctl={turn:L?0:input.turn,thr:L?0:input.thr,up:L?0:input.up,turbo:input.turbo,brake:!!L,land:L&&L.ph!=='up'?(wtr?WAGL:.25):null};
+  const tOn=input.turbo&&input.thr>0&&!L&&!game.tLock; // turbo echt aan: alleen dan loopt de tank leeg
+  if(tOn){game.tank-=dt/TURBO_SEC;if(game.tank<=0){game.tank=0;game.tLock=true}}
+  else{game.tank=Math.min(1,game.tank+dt/TURBO_FILL);if(game.tank>=TURBO_MIN)game.tLock=false}
+  const ctl={turn:L?0:input.turn,thr:L?0:input.thr,up:L?0:input.up,turbo:tOn,brake:!!L,land:L&&L.ph!=='up'?(wtr?WAGL:.25):null};
   flyHeli(dt,ctl);
   heli.fl=clamp(heli.fl+(wtr?4:-3.5)*dt,0,1);
   for(let i=heli.rings.length-1;i>=0;i--){const r=heli.rings[i];r.t+=dt;if(r.t>r.d)heli.rings.splice(i,1)}
@@ -1007,6 +1021,7 @@ function stepGame(dt,time){
   game.trailT+=dt;if(game.trailT>.35){game.trailT=0;heli.trail.push([heli.x,heli.y]);if(heli.trail.length>500)heli.trail.shift()}
   if(game.bannerT>0){game.bannerT-=dt;if(game.bannerT<=0)$('banner').hidden=true}
   $('gSpd').textContent=Math.round(Math.abs(heli.spd)*6);$('gAlt').textContent=Math.round(heli.agl*30);
+  $('tBar').firstChild.style.width=Math.ceil(game.tank*15)/15*100+'%';$('tBar').classList.toggle('leeg',game.tLock);$('tTurbo').classList.toggle('leeg',game.tLock);
   if(game.mode==='arcade')$('sTime').textContent=Math.ceil(game.time),$('sTimeBox').classList.toggle('low',game.time<=10);
 }
 function tryLand(){if(state!=='play'||game.land)return;game.land={ph:'down',t:0,next:false};sfx('land')}
@@ -1019,7 +1034,7 @@ function attract(dt,time){ // automatische vlucht achter titel/menu
 
 /* ================= Menu ================= */
 function openPilot(){ // naam + kleur van de heli; onthouden in localStorage
-  state='pilot';setMusic(false);if(game){game=null}show('pilot');
+  state='pilot';if(game){game=null}show('pilot');
   const inp=$('pName'),row=$('pCols');inp.value=pilot;row.innerHTML='';
   COLS.forEach(([n,col])=>{const b=document.createElement('button');b.className='sw';b.style.background=col;b.title=n;b.setAttribute('aria-label',n);b.setAttribute('aria-pressed',col===heliCol);
     b.onclick=b.onfocus=()=>{if(heliCol===col)return;heliCol=col;store.set('kleur',col);paintHeli();row.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));sfx('blip')};row.appendChild(b)});
@@ -1027,14 +1042,16 @@ function openPilot(){ // naam + kleur van de heli; onthouden in localStorage
 }
 function pilotDone(){pilot=cleanName($('pName').value);store.set('naam',pilot);$('pName').blur();sfx('blip');openMenu()}
 function openMenu(){
-  state='menu';setMusic(false);if(game){game=null}show('menu');
+  state='menu';if(game){game=null}show('menu');
   $('mPilot').textContent='PILOOT: '+(pilot||'?');$('mPilot').style.borderColor=heliCol;
   const sets=$('mSets');sets.innerHTML='';
   for(const k in SETS){const b=document.createElement('button');b.className='b';b.textContent=SETS[k].titel;b.setAttribute('aria-pressed',k===SETK);b.onclick=()=>{if(k===SETK)return;store.set('set',k);loadSet(k,openMenu)};sets.appendChild(b)}
   const modes=$('mModes');modes.innerHTML='';
   [['arcade','ARCADE (MET KLOK)'],['rustig','RUSTIG (GEEN KLOK)']].forEach(([k,n])=>{const b=document.createElement('button');b.className='b';b.textContent=n;b.setAttribute('aria-pressed',k===modeK);b.onclick=()=>{modeK=k;store.set('mode',k);openMenu()};modes.appendChild(b)});
+  const diffs=$('mDiffs');diffs.innerHTML='';
+  for(const k in DIFFS){const b=document.createElement('button');b.className='b';b.textContent=DIFFS[k].n;b.setAttribute('aria-pressed',k===diffK);b.onclick=()=>{diffK=k;store.set('diff',k);openMenu()};diffs.appendChild(b)}
   const lv=$('levels');lv.innerHTML='';
-  CFG.niveaus.forEach((nv,i)=>{const l=scores[nv.id+'|'+modeK]||[];const b=document.createElement('button');b.className='b';
+  CFG.niveaus.forEach((nv,i)=>{const l=scores[sKey(nv.id,modeK)]||[];const b=document.createElement('button');b.className='b';
     b.innerHTML='<span>'+(i+1)+'. '+nv.naam.toUpperCase()+'</span><small>'+(l.length?'TOP: '+l[0].naam+' '+l[0].score:'NOG GEEN SCORE')+'</small>';b.onclick=()=>startGame(nv);lv.appendChild(b)});
   lv.firstChild.focus();
 }
@@ -1120,7 +1137,7 @@ function frame(now){
   if(AC&&rotG){const on=state==='play';rotG.gain.value=on?.5:.12;rotL.frequency.value=12+Math.abs(heli.spd)*.13;rotF.frequency.value=230+Math.abs(heli.spd)*5;music()}
 }
 /* debug-hook voor tests */
-window.__dbg={heli,get game(){return game},get state(){return state},get items(){return ITEMS},get dom(){return DOM[SETK]},get pilot(){return pilot},get heliCol(){return heliCol},get bgmOK(){return bgmOK},get musicOn(){return musicOn},isHit,identify,centerOf,wordFor,onLand,onWater,groundAt,
+window.__dbg={heli,get game(){return game},get state(){return state},get items(){return ITEMS},get dom(){return DOM[SETK]},get pilot(){return pilot},get heliCol(){return heliCol},get bgmOK(){return bgmOK},get musicOn(){return musicOn},get musStep(){return musStep},isHit,identify,centerOf,wordFor,onLand,onWater,groundAt,
   goto(x,y){heli.x=x;heli.y=y;heli.spd=0;heli.alt=groundAt(x,y)+heli.agl},land:tryLand,perf,
   frameMs(){const v=perf.ms/Math.max(1,perf.n);perf.ms=perf.n=0;return v},buildMs:0};
 resize();setMute(muted);buildSky();buildSprites();
