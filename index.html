@@ -162,6 +162,7 @@ button.sw:focus-visible{outline:calc(var(--u)*.8) solid #8fe9ff}
 <div id="rotate">DRAAI JE SCHERM<br>↻<br>TOPO CHOPPER SPEEL JE LIGGEND</div>
 <audio id="bgm" loop preload="auto"><source src="airwolf.ogg" type="audio/ogg"><source src="airwolf.m4a" type="audio/mp4"></audio>
 <script src="geo.js"></script>
+<script src="geo-ne.js"></script>
 <script>
 'use strict';
 const RADAR=true; // minikaart als rond radarscherm; false = rechthoekige atlas-minikaart
@@ -203,6 +204,26 @@ const SETS={
  {id:'we_gebieden',naam:'Gebieden',cats:['gebied'],namen:true},
  {id:'we_gemengd',naam:'Alles door elkaar',cats:['land','stad','plaats','water','gebied','berg']},
  {id:'we_plus',naam:'Plus TOPO',cats:['plus'],namen:true}
+  ]},
+ ne:{geo:GEO_NE,titel:'NOORD-EUROPA', // werkblad Topo Noord-Europa; geometrie uit Natural Earth (geo-ne.js)
+  col:{A:'#a9cf8a',B:'#b99aa8',C:'#f4c76e',D:'#a9b5cb',E:'#f2c3d0',F:'#cfe3a4',G:'#ec9c78',H:'#f4e07a',I:'#bfb07a'},
+  ocol:Object.fromEntries(GEO_NE.other.map(o=>[o[0],'#f6eec6'])),
+  klein:[],vlak:[],
+  raw:[
+['A','land','IJsland'],['B','land','Noorwegen'],['C','land','Zweden'],['D','land','Finland'],['E','land','Rusland'],['F','land','Estland'],['G','land','Letland'],['H','land','Litouwen'],['I','land','Denemarken'],
+['1','stad','Oslo'],['2','stad','Stockholm'],['3','stad','Helsinki'],['4','stad','Kopenhagen'],
+['5','plaats','Sint-Petersburg'],
+['a','water','Noordelijke IJszee'],['b','water','Atlantische Oceaan'],['c','water','Noordzee'],['d','water','Oostzee'],
+['J','gebied','Scandinavië'],
+['NK','plus','Noordkaap'],['LL','plus','Lapland'],['JL','plus','Jutland'],['RK','plus','Reykjavik'],['BE','plus','Bergen'],['GB','plus','Göteborg'],['TA','plus','Tallinn'],['RI','plus','Riga'],['VI','plus','Vilnius']
+  ],
+  niveaus:[
+ {id:'ne_landen',naam:'Landen van Noord-Europa',cats:['land']},
+ {id:'ne_steden',naam:'Hoofdsteden en steden',cats:['stad','plaats'],namen:true},
+ {id:'ne_water',naam:'Wateren',cats:['water']},
+ {id:'ne_gebieden',naam:'Gebieden',cats:['gebied'],namen:true},
+ {id:'ne_gemengd',naam:'Alles door elkaar',cats:['land','stad','plaats','water','gebied']},
+ {id:'ne_plus',naam:'Plus TOPO',cats:['plus'],namen:true}
   ]}
 };
 // Gebergten per kaart, op code (let op: 'l' is op EU de Kaukasus en op WE de Ardennen; 'scand' = Scandinavisch hoogland, geen quiz-item).
@@ -218,13 +239,15 @@ const BERGEN={
      k:{m:1900,w:8,s:.45,v:.14,p:[.5,.75,.6,.55,.7,1,.75,.5]}},       // Oeral: lang, smal, laag (zuid -> noord)
  we:{m:{m:4800,w:30,s:.85,v:.14,p:[.6,.75,.9,1,.98,.85,.8,.75,.6,.4]}, // Alpen
      n:{m:3400,w:21,s:.8,v:.1,p:[.55,.8,1,.95,.7,.45]},               // Pyreneeën
-     l:{m:700,w:20,s:.1,v:0,p:[.75,.9,1,.85],bos:1}}                  // Ardennen: glooiend, bebost
+     l:{m:700,w:20,s:.1,v:0,p:[.75,.9,1,.85],bos:1}},                 // Ardennen: glooiend, bebost
+ ne:{scand:{m:2500,w:24,s:.5,v:.12,p:[.45,.6,.55,.5,.6,.8,1,.85]}}    // Scandinavisch hoogland (geen quiz-item op dit werkblad)
 };
 const mU=m=>(HMAXU-1.5)*Math.pow(m/5600,.75);             // meters -> hoogte-eenheden (5600 m = bijna de max)
 const SNEEUW_M=lat=>clamp(2950-(lat-43)*80,700,3400);     // sneeuwgrens in meters: in Scandinavië veel lager dan in de Pyreneeën
 // Kaartprojectie: equidistante kegel, gefit op de steden in geo.js (afwijking < 0,5 graad). [x0,y0,a,b,n,lon0]:
 // x = x0+(a+b*lat)*sin(n*(lon-lon0)), y = y0+(a+b*lat)*cos(n*(lon-lon0)). Nodig voor klimaat en streken hieronder.
-const PROJ={eu:[509.6,-502.9,2092,-21.254,.7549,18.02],we:[519.6,-2223.1,5924.6,-60.62,.7728,3]};
+const PROJ={eu:[509.6,-502.9,2092,-21.254,.7549,18.02],we:[519.6,-2223.1,5924.6,-60.62,.7728,3],
+ ne:[541.7,-684.4,3350.37,-36.278,.8813,10]}; // ne: exact de projectie waarmee geo-ne.js gemaakt is
 // Streken: grove, handgemaakte landschapsregio's als ellips [soort, lengte, breedte, straal O-W, straal N-Z] in graden; latere regels winnen.
 // a akkers · e weiden · p polder · b loofbos · n naaldbos · d droog · s steppe · h heide · t toendra · m moeras · w woestijn · z zandkust · k rotskust
 const STREKEN=[
@@ -244,7 +267,7 @@ const STREKEN=[
 ];
 // Domtoren (thuis): staat op elke kaart. Utrecht zit niet in de stedenlijsten; de positie is berekend met een
 // kleinste-kwadratenfit van lengte/breedte op de steden die wel in geo.js staan (afwijking < 0,4 eenheid). r = landingsstraal.
-const DOM={eu:{p:[342.6,467.6],r:9},we:{p:[598.8,542.6],r:16}},DOM_SEC=10,DOM_PTS=50;
+const DOM={eu:{p:[342.6,467.6],r:9},we:{p:[598.8,542.6],r:16},ne:{p:[432.2,772.1],r:11}},DOM_SEC=10,DOM_PTS=50; // ne: Utrecht direct geprojecteerd
 const store={get(k,d){try{const v=localStorage.getItem('chopper-'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('chopper-'+k,JSON.stringify(v))}catch(e){}}};
 const $=id=>document.getElementById(id);
 const COLS=[['ROOD','#e2473a'],['ORANJE','#f08a24'],['GEEL','#f2c230'],['GROEN','#3fae4a'],['BLAUW','#2f7fe0'],['PAARS','#8a4fd0'],['ROZE','#ff5fb0'],['ZWART','#3a3f4a']];
